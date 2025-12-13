@@ -5,13 +5,14 @@ from typing import Optional, List
 import uvicorn
 from dotenv import load_dotenv
 
-# Try to use enhanced predictor, fallback to basic if not available
+# Use enhanced predictor with player statistics
 try:
     from app.predictor_enhanced import predictor
     print("✅ Using enhanced ML predictor with player statistics")
-except ImportError:
+except Exception as e:
+    print(f"⚠️  Enhanced predictor import failed: {e}")
     from app.predictor import predictor
-    print("⚠️  Using basic predictor (enhanced version not available)")
+    print("⚠️  Falling back to basic predictor")
 
 # Load environment variables
 load_dotenv("../.env")
@@ -32,9 +33,12 @@ app.add_middleware(
 )
 
 # Request/Response models
-class MatchFeatures(BaseModel):
+class PredictionRequest(BaseModel):
     home_team_id: int
     away_team_id: int
+    matchday: int = 1
+    home_team_name: Optional[str] = None
+    away_team_name: Optional[str] = None
     home_team_position: Optional[int] = None
     away_team_position: Optional[int] = None
 
@@ -74,16 +78,18 @@ async def health_check():
     }
 
 @app.post("/predict", response_model=PredictionResponse)
-async def predict_match(features: MatchFeatures):
+async def predict_match(request: PredictionRequest):
     """
     Predict match outcome using real team statistics from database
     """
     try:
-        # Use the predictor with real team stats
+        # Use the predictor with real team stats and team names for insights
         result = predictor.predict(
-            home_team_id=features.home_team_id,
-            away_team_id=features.away_team_id,
-            matchday=features.home_team_position or 16
+            home_team_id=request.home_team_id,
+            away_team_id=request.away_team_id,
+            matchday=request.matchday,
+            home_team_name=request.home_team_name,
+            away_team_name=request.away_team_name
         )
         
         return result

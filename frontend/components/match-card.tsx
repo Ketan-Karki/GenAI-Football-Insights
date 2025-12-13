@@ -43,6 +43,11 @@ export function MatchCard({ match }: MatchCardProps) {
 
   const getPredictedWinner = () => {
     if (!prediction) return null;
+    // Use predictedWinner from API if available (team-specific)
+    if (prediction.predictedWinner) {
+      return prediction.predictedWinner;
+    }
+    // Fallback to generic outcome mapping
     if (prediction.predictedOutcome === "HOME_WIN")
       return match.homeTeam.shortName;
     if (prediction.predictedOutcome === "AWAY_WIN")
@@ -313,19 +318,46 @@ export function MatchCard({ match }: MatchCardProps) {
                           </div>
                         )}
 
-                      {prediction.ballKnowledge.map((insight, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 rounded p-2"
-                        >
-                          <span className="text-orange-500 font-bold">•</span>
-                          <span>{insight}</span>
-                        </div>
-                      ))}
+                      {prediction.insights &&
+                        prediction.insights.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                              🤖 ML Insights
+                            </p>
+                            {prediction.insights.map((insight, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded p-2"
+                              >
+                                <span className="text-orange-500 font-bold">
+                                  •
+                                </span>
+                                <span>{insight}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                      {prediction.ballKnowledge &&
+                        prediction.ballKnowledge.map((insight, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 rounded p-2"
+                          >
+                            <span className="text-orange-500 font-bold">•</span>
+                            <span>{insight}</span>
+                          </div>
+                        ))}
 
                       {prediction.modelVersion && (
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 italic mt-1 pt-2 border-t border-orange-200 dark:border-orange-800">
                           Engine: {prediction.modelVersion}
+                          {prediction.modelAccuracy && (
+                            <span className="ml-2">
+                              • Accuracy:{" "}
+                              {(prediction.modelAccuracy * 100).toFixed(1)}%
+                            </span>
+                          )}
                         </p>
                       )}
                     </div>

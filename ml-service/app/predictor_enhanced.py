@@ -7,7 +7,7 @@ import os
 import joblib
 import pandas as pd
 import numpy as np
-from feature_engineering import FeatureEngineer
+from app.feature_engineering import FeatureEngineer
 from datetime import datetime
 
 class EnhancedMatchPredictor:
@@ -37,7 +37,8 @@ class EnhancedMatchPredictor:
             self.model = None
     
     def predict(self, home_team_id: int, away_team_id: int, 
-                match_date: str = None, matchday: int = 1) -> dict:
+                match_date: str = None, matchday: int = 1,
+                home_team_name: str = None, away_team_name: str = None) -> dict:
         """
         Predict match outcome using ML model trained on historical data.
         
@@ -83,9 +84,9 @@ class EnhancedMatchPredictor:
             features_dict = X.iloc[0].to_dict()
             
             # Generate insights based on features
-            insights = self._generate_insights(features_dict, probabilities)
+            insights = self._generate_insights(features_dict, probabilities, home_team_name, away_team_name)
             
-            return {
+            result = {
                 'home_win_probability': round(float(probabilities[2]), 3),
                 'draw_probability': round(float(probabilities[1]), 3),
                 'away_win_probability': round(float(probabilities[0]), 3),
@@ -93,56 +94,65 @@ class EnhancedMatchPredictor:
                 'confidence_score': round(float(confidence), 3),
                 'model_version': f"{self.metadata['model_type']}-v2.0-enhanced",
                 'model_accuracy': round(self.metadata['accuracy'], 3),
-                'insights': insights,
+                'insights': insights if insights else [],
                 'key_features': self._get_key_features(features_dict)
             }
+            return result
             
         except Exception as e:
             print(f"❌ Prediction error: {e}")
             return self._fallback_prediction(home_team_id, away_team_id)
     
-    def _generate_insights(self, features: dict, probabilities: np.ndarray) -> list:
-        """Generate human-readable insights from features"""
+    def _generate_insights(self, features: dict, probabilities: np.ndarray, 
+                          home_team_name: str = None, away_team_name: str = None) -> list:
+        """Generate human-readable insights from features with actual team names"""
         insights = []
+        
+        # Debug: print received team names
+        print(f"🔍 Generating insights - Home: {home_team_name}, Away: {away_team_name}")
+        
+        # Use team names if provided, otherwise fall back to "Home"/"Away"
+        home_label = home_team_name if home_team_name else "Home team"
+        away_label = away_team_name if away_team_name else "Away team"
         
         # Form analysis
         form_diff = features.get('form_difference', 0)
         if abs(form_diff) > 0.2:
-            better_team = "Home" if form_diff > 0 else "Away"
+            better_team = home_label if form_diff > 0 else away_label
             insights.append(
-                f"{better_team} team in significantly better recent form "
+                f"{better_team} in significantly better recent form "
                 f"({abs(form_diff):.0%} advantage)"
             )
         
         # Attack strength
         attack_diff = features.get('attack_strength_diff', 0)
         if abs(attack_diff) > 0.5:
-            stronger = "Home" if attack_diff > 0 else "Away"
+            stronger = home_label if attack_diff > 0 else away_label
             insights.append(
-                f"{stronger} team averaging {abs(attack_diff):.1f} more goals per game"
+                f"{stronger} averaging {abs(attack_diff):.1f} more goals per game"
             )
         
         # Player quality
         player_diff = features.get('player_quality_diff', 0)
         if abs(player_diff) > 0.3:
-            better = "Home" if player_diff > 0 else "Away"
+            better = home_label if player_diff > 0 else away_label
             insights.append(
-                f"{better} team's key players in better scoring form"
+                f"{better}'s key players in better scoring form"
             )
         
         # Head-to-head
         h2h_home_rate = features.get('h2h_home_win_rate', 0)
         h2h_away_rate = features.get('h2h_away_win_rate', 0)
         if h2h_home_rate > 0.6:
-            insights.append(f"Home team dominates head-to-head ({h2h_home_rate:.0%} win rate)")
+            insights.append(f"{home_label} dominates head-to-head ({h2h_home_rate:.0%} win rate)")
         elif h2h_away_rate > 0.6:
-            insights.append(f"Away team dominates head-to-head ({h2h_away_rate:.0%} win rate)")
+            insights.append(f"{away_label} dominates head-to-head ({h2h_away_rate:.0%} win rate)")
         
         # Defensive strength
         defense_diff = features.get('defense_strength_diff', 0)
         if abs(defense_diff) > 0.5:
-            stronger = "Home" if defense_diff > 0 else "Away"
-            insights.append(f"{stronger} team has stronger defense")
+            stronger = home_label if defense_diff > 0 else away_label
+            insights.append(f"{stronger} has stronger defense")
         
         # Prediction confidence
         max_prob = max(probabilities)

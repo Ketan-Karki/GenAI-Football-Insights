@@ -67,15 +67,25 @@ export interface KeyPlayers {
 
 export interface Prediction {
   matchId: number;
+  homeTeam?: string;
+  awayTeam?: string;
   homeWinProbability: number;
   drawProbability: number;
   awayWinProbability: number;
   predictedOutcome: string;
+  predictedWinner?: string;
   confidenceScore: number;
   modelVersion?: string;
-  ballKnowledge?: string[];
-  teamStats?: TeamStats;
+  modelAccuracy?: number;
+  teamStats?: {
+    homeForm: number;
+    awayForm: number;
+    homeGoalsAvg: number;
+    awayGoalsAvg: number;
+  };
   headToHead?: HeadToHead;
+  ballKnowledge?: string[];
+  insights?: string[];
   keyPlayers?: KeyPlayers;
 }
 

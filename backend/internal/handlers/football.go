@@ -10,7 +10,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yourusername/football-prediction/internal/service"
-	"github.com/yourusername/football-prediction/pkg/football"
 )
 
 type FootballHandler struct {
@@ -90,16 +89,27 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 		return
 	}
 
-	// Get match details to send to ML service
-	match, err := h.service.GetMatch(matchID)
+	// Get match details from database - try external ID first (from API), then internal ID
+	matchData, err := h.service.GetMatchByExternalID(matchID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get match details"})
-		return
+		// If not found by external ID, try internal ID
+		matchData, err = h.service.GetMatchFromDB(matchID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get match details"})
+			return
+		}
 	}
+
+	homeTeam := matchData["homeTeam"].(map[string]interface{})
+	awayTeam := matchData["awayTeam"].(map[string]interface{})
+	homeTeamID := homeTeam["id"].(int)
+	awayTeamID := awayTeam["id"].(int)
+	homeTeamExtID := homeTeam["externalId"].(int)
+	awayTeamExtID := awayTeam["externalId"].(int)
 
 	// Best-effort head-to-head statistics (do not fail on error)
 	var headToHead gin.H
-	if h2h, err := h.service.GetHeadToHead(match.HomeTeam.ID, match.AwayTeam.ID, 10); err == nil && h2h != nil {
+	if h2h, err := h.service.GetHeadToHead(homeTeamID, awayTeamID, 10); err == nil && h2h != nil {
 		headToHead = gin.H{
 			"homeWins": h2h.HomeWins,
 			"awayWins": h2h.AwayWins,
@@ -109,7 +119,7 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 
 	// Best-effort key players based on stored player_match_stats (do not fail on error)
 	var keyPlayers gin.H
-	if homeKP, awayKP, err := h.service.GetKeyPlayers(match.ID, match.HomeTeam.ID, match.AwayTeam.ID, 6); err == nil {
+	if homeKP, awayKP, err := h.service.GetKeyPlayers(matchID, homeTeamID, awayTeamID, 6); err == nil {
 		// Only include if we have at least one player on either side
 		if len(homeKP) > 0 || len(awayKP) > 0 {
 			keyPlayers = gin.H{
@@ -125,10 +135,21 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 		mlServiceURL = "http://localhost:8000"
 	}
 
-	// Prepare request payload
+	// Prepare request payload using external IDs for ML service
+	matchday := 1 // default
+	if md, ok := matchData["matchday"].(int); ok {
+		matchday = md
+	}
+
+	homeTeamName := homeTeam["name"].(string)
+	awayTeamName := awayTeam["name"].(string)
+
 	payload := map[string]interface{}{
-		"home_team_id": match.HomeTeam.ID,
-		"away_team_id": match.AwayTeam.ID,
+		"home_team_id":   homeTeamExtID,
+		"away_team_id":   awayTeamExtID,
+		"matchday":       matchday,
+		"home_team_name": homeTeamName,
+		"away_team_name": awayTeamName,
 	}
 
 	jsonData, _ := json.Marshal(payload)
@@ -188,13 +209,47 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 	}
 
 	// Add ball knowledge insights using raw ML response (includes team_stats)
-	prediction["ballKnowledge"] = generateBallKnowledge(match, mlResponse)
+	prediction["ballKnowledge"] = generateBallKnowledge(matchData, mlResponse)
+
+	// Add team-specific prediction winner
+	predictedOutcome, _ := prediction["predictedOutcome"].(string)
+	// homeTeamName and awayTeamName already declared above
+
+	var predictedWinner string
+	switch predictedOutcome {
+	case "HOME_WIN":
+		predictedWinner = homeTeamName
+	case "AWAY_WIN":
+		predictedWinner = awayTeamName
+	case "DRAW":
+		predictedWinner = "Draw"
+	default:
+		predictedWinner = predictedOutcome
+	}
+	prediction["predictedWinner"] = predictedWinner
+	prediction["homeTeam"] = homeTeamName
+	prediction["awayTeam"] = awayTeamName
+
+	// Add insights from ML response if available
+	if insights, ok := mlResponse["insights"].([]interface{}); ok {
+		prediction["insights"] = insights
+	}
+
+	// Add model accuracy if available
+	if accuracy, ok := mlResponse["model_accuracy"].(float64); ok {
+		prediction["modelAccuracy"] = accuracy
+	}
 
 	c.JSON(http.StatusOK, prediction)
 }
 
-func generateBallKnowledge(match *football.Match, ml map[string]interface{}) []string {
+func generateBallKnowledge(matchData map[string]interface{}, ml map[string]interface{}) []string {
 	insights := []string{}
+
+	homeTeam := matchData["homeTeam"].(map[string]interface{})
+	awayTeam := matchData["awayTeam"].(map[string]interface{})
+	homeTeamName := homeTeam["name"].(string)
+	awayTeamName := awayTeam["name"].(string)
 
 	homeWinProb, _ := ml["home_win_probability"].(float64)
 	awayWinProb, _ := ml["away_win_probability"].(float64)
@@ -221,26 +276,33 @@ func generateBallKnowledge(match *football.Match, ml map[string]interface{}) []s
 	// Main prediction with context
 	predictedOutcome, _ := ml["predicted_outcome"].(string)
 	if predictedOutcome == "HOME_WIN" {
-		insights = append(insights, fmt.Sprintf("🏆 AI predicts %s victory at home", match.HomeTeam.ShortName))
+		insights = append(insights, fmt.Sprintf("🏆 AI predicts %s victory at home", homeTeamName))
 		insights = append(insights, fmt.Sprintf("📊 Win probability: %.0f%%", homeWinProb*100))
 	} else if predictedOutcome == "AWAY_WIN" {
-		insights = append(insights, fmt.Sprintf("🏆 AI predicts %s to win away", match.AwayTeam.ShortName))
+		insights = append(insights, fmt.Sprintf("🏆 AI predicts %s to win away", awayTeamName))
 		insights = append(insights, fmt.Sprintf("📊 Win probability: %.0f%%", awayWinProb*100))
 	} else if predictedOutcome == "DRAW" {
 		insights = append(insights, "🤝 AI expects a draw - both teams rated closely")
 		insights = append(insights, fmt.Sprintf("📊 Draw probability: %.0f%%", drawProb*100))
 	}
 
+	// Dominant team
+	if homeWinProb > 0.6 {
+		insights = append(insights, fmt.Sprintf("%s heavily favored to win", homeTeamName))
+	} else if awayWinProb > 0.6 {
+		insights = append(insights, fmt.Sprintf("%s heavily favored to win", awayTeamName))
+	}
+
 	// Form-based insight (only if we have stats)
 	if homeForm > 0 && awayForm > 0 {
 		insights = append(insights,
-			fmt.Sprintf("📈 Recent form: %s %.0f%% wins vs %s %.0f%%", match.HomeTeam.ShortName, homeForm*100, match.AwayTeam.ShortName, awayForm*100))
+			fmt.Sprintf("📈 Recent form: %s %.0f%% wins vs %s %.0f%%", homeTeamName, homeForm*100, awayTeamName, awayForm*100))
 	}
 
 	// Goals-based insight
 	if homeGoals > 0 && awayGoals > 0 {
 		insights = append(insights,
-			fmt.Sprintf("⚽ Goals per game: %s %.1f vs %s %.1f", match.HomeTeam.ShortName, homeGoals, match.AwayTeam.ShortName, awayGoals))
+			fmt.Sprintf("⚽ Goals per game: %s %.1f vs %s %.1f", homeTeamName, homeGoals, awayTeamName, awayGoals))
 	}
 
 	// Confidence interpretation

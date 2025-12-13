@@ -95,6 +95,16 @@ func (s *FootballService) GetStandings(competitionCode string, season string) (*
 	return resp, nil
 }
 
+// GetMatchFromDB fetches match from database by internal ID
+func (s *FootballService) GetMatchFromDB(matchID int) (map[string]interface{}, error) {
+	return s.matchRepo.GetMatchByID(matchID)
+}
+
+// GetMatchByExternalID fetches match from database by external API ID
+func (s *FootballService) GetMatchByExternalID(externalID int) (map[string]interface{}, error) {
+	return s.matchRepo.GetMatchByExternalID(externalID)
+}
+
 func (s *FootballService) GetMatch(matchID int) (*football.Match, error) {
 	// Check cache
 	cacheKey := fmt.Sprintf("match:%d", matchID)

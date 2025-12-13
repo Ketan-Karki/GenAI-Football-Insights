@@ -19,9 +19,10 @@ class FeatureEngineer:
     def get_db_connection(self):
         return psycopg2.connect(self.db_url)
     
-    def get_team_recent_form(self, team_id: int, before_date: str, n_matches: int = 5) -> Dict:
+    def get_team_recent_form(self, team_external_id: int, before_date: str, n_matches: int = 5) -> Dict:
         """
         Calculate team's recent form from last N matches before a given date.
+        Uses external_id (from API) to identify teams.
         Returns: wins, draws, losses, goals_for, goals_against, points
         """
         conn = self.get_db_connection()
@@ -31,12 +32,12 @@ class FeatureEngineer:
                 m.home_score,
                 m.away_score,
                 m.winner,
-                CASE 
-                    WHEN m.home_team_id = %s THEN 'home'
-                    ELSE 'away'
-                END as team_position
+                ht.external_id as home_team_ext_id,
+                at.external_id as away_team_ext_id
             FROM matches m
-            WHERE (m.home_team_id = %s OR m.away_team_id = %s)
+            JOIN teams ht ON m.home_team_id = ht.id
+            JOIN teams at ON m.away_team_id = at.id
+            WHERE (ht.external_id = %s OR at.external_id = %s)
               AND m.status = 'FINISHED'
               AND m.utc_date < %s
               AND m.home_score IS NOT NULL
@@ -44,7 +45,7 @@ class FeatureEngineer:
             LIMIT %s
         """
         
-        df = pd.read_sql(query, conn, params=(team_id, team_id, team_id, before_date, n_matches))
+        df = pd.read_sql(query, conn, params=(team_external_id, team_external_id, before_date, n_matches))
         conn.close()
         
         if len(df) == 0:
@@ -52,6 +53,8 @@ class FeatureEngineer:
                 'wins': 0, 'draws': 0, 'losses': 0,
                 'goals_for': 0, 'goals_against': 0,
                 'points': 0, 'form_score': 0.5,
+                'goals_per_game': 0,
+                'conceded_per_game': 0,
                 'matches_played': 0
             }
         
@@ -59,17 +62,14 @@ class FeatureEngineer:
         goals_for = goals_against = 0
         
         for _, match in df.iterrows():
-            is_home = match['team_position'] == 'home'
+            is_home = match['home_team_ext_id'] == team_external_id
             
             if is_home:
-                gf = match['home_score']
-                ga = match['away_score']
+                goals_for += match['home_score']
+                goals_against += match['away_score']
             else:
-                gf = match['away_score']
-                ga = match['home_score']
-            
-            goals_for += gf
-            goals_against += ga
+                goals_for += match['away_score']
+                goals_against += match['home_score']
             
             if match['winner'] == 'HOME_TEAM' and is_home:
                 wins += 1
@@ -99,9 +99,10 @@ class FeatureEngineer:
             'matches_played': len(df)
         }
     
-    def get_player_features(self, team_id: int, before_date: str, n_matches: int = 5) -> Dict:
+    def get_player_features(self, team_external_id: int, before_date: str, n_matches: int = 5) -> Dict:
         """
         Get aggregated player statistics for a team from recent matches.
+        Uses external_id (from API) to identify teams.
         Returns: avg goals per match, avg assists per match, top scorer form
         """
         conn = self.get_db_connection()
@@ -115,8 +116,9 @@ class FeatureEngineer:
                 COUNT(DISTINCT pms.player_id) as active_players
             FROM player_match_stats pms
             JOIN players p ON pms.player_id = p.id
+            JOIN teams t ON p.team_id = t.id
             JOIN matches m ON pms.match_id = m.id
-            WHERE p.team_id = %s
+            WHERE t.external_id = %s
               AND m.utc_date < %s
               AND m.status = 'FINISHED'
               AND pms.match_id IN (
@@ -128,7 +130,7 @@ class FeatureEngineer:
               )
         """
         
-        df = pd.read_sql(query, conn, params=(team_id, before_date, before_date, n_matches * 20))
+        df = pd.read_sql(query, conn, params=(team_external_id, before_date, before_date, n_matches * 20))
         conn.close()
         
         if len(df) == 0 or df.iloc[0]['matches_with_data'] == 0:
@@ -149,31 +151,34 @@ class FeatureEngineer:
             'squad_depth': row['active_players'] if row['active_players'] else 0
         }
     
-    def get_head_to_head(self, home_team_id: int, away_team_id: int, before_date: str, n_matches: int = 5) -> Dict:
+    def get_head_to_head(self, home_team_ext_id: int, away_team_ext_id: int, 
+                         before_date: str, n_matches: int = 5) -> Dict:
         """
-        Get head-to-head statistics between two teams.
+        Get head-to-head record between two teams.
+        Uses external_id (from API) to identify teams.
+        Returns: home wins, away wins, draws, avg goals
         """
         conn = self.get_db_connection()
         
         query = """
             SELECT 
-                m.home_score,
-                m.away_score,
-                m.winner,
-                m.home_team_id
+                m.home_score, m.away_score, m.winner,
+                ht.external_id as home_team_ext_id,
+                at.external_id as away_team_ext_id
             FROM matches m
-            WHERE ((m.home_team_id = %s AND m.away_team_id = %s)
-                OR (m.home_team_id = %s AND m.away_team_id = %s))
+            JOIN teams ht ON m.home_team_id = ht.id
+            JOIN teams at ON m.away_team_id = at.id
+            WHERE ((ht.external_id = %s AND at.external_id = %s)
+                OR (ht.external_id = %s AND at.external_id = %s))
               AND m.status = 'FINISHED'
               AND m.utc_date < %s
-              AND m.home_score IS NOT NULL
             ORDER BY m.utc_date DESC
             LIMIT %s
         """
         
         df = pd.read_sql(query, conn, params=(
-            home_team_id, away_team_id, 
-            away_team_id, home_team_id,
+            home_team_ext_id, away_team_ext_id,
+            away_team_ext_id, home_team_ext_id,
             before_date, n_matches
         ))
         conn.close()
@@ -188,42 +193,36 @@ class FeatureEngineer:
                 'h2h_matches': 0
             }
         
-        home_wins = away_wins = draws = 0
-        home_goals = away_goals = 0
+        h2h_home_wins = h2h_away_wins = h2h_draws = 0
+        h2h_home_goals = h2h_away_goals = 0
         
         for _, match in df.iterrows():
-            # Determine which team was home in this historical match
-            historical_home_is_current_home = match['home_team_id'] == home_team_id
-            
-            if historical_home_is_current_home:
-                hg = match['home_score']
-                ag = match['away_score']
-            else:
-                hg = match['away_score']
-                ag = match['home_score']
-            
-            home_goals += hg
-            away_goals += ag
-            
-            if match['winner'] == 'HOME_TEAM':
-                if historical_home_is_current_home:
-                    home_wins += 1
+            # From perspective of current home team
+            if match['home_team_ext_id'] == home_team_ext_id:
+                h2h_home_goals += match['home_score']
+                h2h_away_goals += match['away_score']
+                if match['winner'] == 'HOME_TEAM':
+                    h2h_home_wins += 1
+                elif match['winner'] == 'AWAY_TEAM':
+                    h2h_away_wins += 1
                 else:
-                    away_wins += 1
-            elif match['winner'] == 'AWAY_TEAM':
-                if historical_home_is_current_home:
-                    away_wins += 1
-                else:
-                    home_wins += 1
+                    h2h_draws += 1
             else:
-                draws += 1
+                h2h_home_goals += match['away_score']
+                h2h_away_goals += match['home_score']
+                if match['winner'] == 'AWAY_TEAM':
+                    h2h_home_wins += 1
+                elif match['winner'] == 'HOME_TEAM':
+                    h2h_away_wins += 1
+                else:
+                    h2h_draws += 1
         
         return {
-            'h2h_home_wins': home_wins,
-            'h2h_draws': draws,
-            'h2h_away_wins': away_wins,
-            'h2h_home_goals_avg': home_goals / len(df) if len(df) > 0 else 0,
-            'h2h_away_goals_avg': away_goals / len(df) if len(df) > 0 else 0,
+            'h2h_home_wins': h2h_home_wins,
+            'h2h_draws': h2h_draws,
+            'h2h_away_wins': h2h_away_wins,
+            'h2h_home_goals_avg': h2h_home_goals / len(df) if len(df) > 0 else 0,
+            'h2h_away_goals_avg': h2h_away_goals / len(df) if len(df) > 0 else 0,
             'h2h_matches': len(df)
         }
     
@@ -250,35 +249,35 @@ class FeatureEngineer:
             'matchday': matchday,
             'is_home': 1,
             
-            # Team form features (last 10 matches)
-            'home_form_score': home_form['form_score'],
-            'away_form_score': away_form['form_score'],
-            'home_wins_recent': home_form['wins'],
-            'away_wins_recent': away_form['wins'],
-            'home_goals_per_game': home_form['goals_per_game'],
-            'away_goals_per_game': away_form['goals_per_game'],
-            'home_conceded_per_game': home_form['conceded_per_game'],
-            'away_conceded_per_game': away_form['conceded_per_game'],
+            # Team form features
+            'home_form_score': home_form.get('form_score', 0.5),
+            'away_form_score': away_form.get('form_score', 0.5),
+            'home_wins_recent': home_form.get('wins', 0),
+            'away_wins_recent': away_form.get('wins', 0),
+            'home_goals_per_game': home_form.get('goals_per_game', 0),
+            'away_goals_per_game': away_form.get('goals_per_game', 0),
+            'home_conceded_per_game': home_form.get('conceded_per_game', 0),
+            'away_conceded_per_game': away_form.get('conceded_per_game', 0),
             
             # Player-based features
-            'home_player_goals_avg': home_players['avg_goals_per_match'],
-            'away_player_goals_avg': away_players['avg_goals_per_match'],
-            'home_player_assists_avg': home_players['avg_assists_per_match'],
-            'away_player_assists_avg': away_players['avg_assists_per_match'],
-            'home_top_scorer_form': home_players['top_scorer_form'],
-            'away_top_scorer_form': away_players['top_scorer_form'],
+            'home_player_goals_avg': home_players.get('avg_goals_per_match', 0),
+            'away_player_goals_avg': away_players.get('avg_goals_per_match', 0),
+            'home_player_assists_avg': home_players.get('avg_assists_per_match', 0),
+            'away_player_assists_avg': away_players.get('avg_assists_per_match', 0),
+            'home_top_scorer_form': home_players.get('top_scorer_form', 0),
+            'away_top_scorer_form': away_players.get('top_scorer_form', 0),
             
             # Head-to-head features
-            'h2h_home_win_rate': h2h['h2h_home_wins'] / max(h2h['h2h_matches'], 1),
-            'h2h_away_win_rate': h2h['h2h_away_wins'] / max(h2h['h2h_matches'], 1),
-            'h2h_home_goals_avg': h2h['h2h_home_goals_avg'],
-            'h2h_away_goals_avg': h2h['h2h_away_goals_avg'],
+            'h2h_home_win_rate': h2h.get('h2h_home_wins', 0) / max(h2h.get('h2h_matches', 1), 1),
+            'h2h_away_win_rate': h2h.get('h2h_away_wins', 0) / max(h2h.get('h2h_matches', 1), 1),
+            'h2h_home_goals_avg': h2h.get('h2h_home_goals_avg', 0),
+            'h2h_away_goals_avg': h2h.get('h2h_away_goals_avg', 0),
             
             # Derived features
-            'form_difference': home_form['form_score'] - away_form['form_score'],
-            'attack_strength_diff': home_form['goals_per_game'] - away_form['goals_per_game'],
-            'defense_strength_diff': away_form['conceded_per_game'] - home_form['conceded_per_game'],
-            'player_quality_diff': home_players['avg_goals_per_match'] - away_players['avg_goals_per_match'],
+            'form_difference': home_form.get('form_score', 0.5) - away_form.get('form_score', 0.5),
+            'attack_strength_diff': home_form.get('goals_per_game', 0) - away_form.get('goals_per_game', 0),
+            'defense_strength_diff': away_form.get('conceded_per_game', 0) - home_form.get('conceded_per_game', 0),
+            'player_quality_diff': home_players.get('avg_goals_per_match', 0) - away_players.get('avg_goals_per_match', 0),
         }
         
         return pd.DataFrame([features])

@@ -32,6 +32,112 @@ func NewMatchRepository(db *sql.DB) *MatchRepository {
 	return &MatchRepository{db: db}
 }
 
+// GetMatchByExternalID fetches a match from the database by its external API ID
+func (r *MatchRepository) GetMatchByExternalID(externalID int) (map[string]interface{}, error) {
+	query := `
+		SELECT 
+			m.id, m.external_id, m.status, m.utc_date, m.matchday,
+			m.home_team_id, m.away_team_id,
+			ht.name as home_team_name, ht.external_id as home_team_external_id,
+			at.name as away_team_name, at.external_id as away_team_external_id
+		FROM matches m
+		JOIN teams ht ON m.home_team_id = ht.id
+		JOIN teams at ON m.away_team_id = at.id
+		WHERE m.external_id = $1
+	`
+
+	var (
+		id, externalIDResult, homeTeamID, awayTeamID, homeExtID, awayExtID, matchday int
+		status, homeTeamName, awayTeamName                                           string
+		utcDate                                                                      sql.NullTime
+	)
+
+	err := r.db.QueryRow(query, externalID).Scan(
+		&id, &externalIDResult, &status, &utcDate, &matchday,
+		&homeTeamID, &awayTeamID,
+		&homeTeamName, &homeExtID,
+		&awayTeamName, &awayExtID,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("match not found")
+		}
+		return nil, fmt.Errorf("failed to fetch match: %w", err)
+	}
+
+	return map[string]interface{}{
+		"id":         id,
+		"externalId": externalIDResult,
+		"status":     status,
+		"utcDate":    utcDate.Time,
+		"matchday":   matchday,
+		"homeTeam": map[string]interface{}{
+			"id":         homeTeamID,
+			"externalId": homeExtID,
+			"name":       homeTeamName,
+		},
+		"awayTeam": map[string]interface{}{
+			"id":         awayTeamID,
+			"externalId": awayExtID,
+			"name":       awayTeamName,
+		},
+	}, nil
+}
+
+// GetMatchByID fetches a match from the database by its internal ID
+func (r *MatchRepository) GetMatchByID(matchID int) (map[string]interface{}, error) {
+	query := `
+		SELECT 
+			m.id, m.external_id, m.status, m.utc_date, m.matchday,
+			m.home_team_id, m.away_team_id,
+			ht.name as home_team_name, ht.external_id as home_team_external_id,
+			at.name as away_team_name, at.external_id as away_team_external_id
+		FROM matches m
+		JOIN teams ht ON m.home_team_id = ht.id
+		JOIN teams at ON m.away_team_id = at.id
+		WHERE m.id = $1
+	`
+
+	var (
+		id, externalID, homeTeamID, awayTeamID, homeExtID, awayExtID, matchday int
+		status, homeTeamName, awayTeamName                                     string
+		utcDate                                                                sql.NullTime
+	)
+
+	err := r.db.QueryRow(query, matchID).Scan(
+		&id, &externalID, &status, &utcDate, &matchday,
+		&homeTeamID, &awayTeamID,
+		&homeTeamName, &homeExtID,
+		&awayTeamName, &awayExtID,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("match not found")
+		}
+		return nil, fmt.Errorf("failed to fetch match: %w", err)
+	}
+
+	return map[string]interface{}{
+		"id":         id,
+		"externalId": externalID,
+		"status":     status,
+		"utcDate":    utcDate.Time,
+		"matchday":   matchday,
+		"homeTeam": map[string]interface{}{
+			"id":         homeTeamID,
+			"externalId": homeExtID,
+			"name":       homeTeamName,
+		},
+		"awayTeam": map[string]interface{}{
+			"id":         awayTeamID,
+			"externalId": awayExtID,
+			"name":       awayTeamName,
+		},
+	}, nil
+}
+
 // GetHeadToHeadByExternalTeamIDs returns head-to-head record for two clubs
 // identified by their external IDs (from football-data.org).
 func (r *MatchRepository) GetHeadToHeadByExternalTeamIDs(homeExternalID, awayExternalID, limit int) (*HeadToHeadRecord, error) {
