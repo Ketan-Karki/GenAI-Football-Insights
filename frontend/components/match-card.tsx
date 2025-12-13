@@ -207,7 +207,7 @@ export function MatchCard({ match }: MatchCardProps) {
             >
               <div className="bg-[#2B3139] rounded-md p-3 text-center border border-border smooth-hover hover:scale-105 hover:border-success hover:shadow-lg hover:shadow-success/20">
                 <p className="text-xs text-[#848E9C] mb-1 uppercase tracking-wider">
-                  Home
+                  {match.homeTeam.tla}
                 </p>
                 <p className="text-xl font-black text-success font-numeric">
                   {(prediction.homeWinProbability * 100).toFixed(0)}%
@@ -223,7 +223,7 @@ export function MatchCard({ match }: MatchCardProps) {
               </div>
               <div className="bg-[#2B3139] rounded-md p-3 text-center border border-border smooth-hover hover:scale-105 hover:border-destructive hover:shadow-lg hover:shadow-destructive/20">
                 <p className="text-xs text-[#848E9C] mb-1 uppercase tracking-wider">
-                  Away
+                  {match.awayTeam.tla}
                 </p>
                 <p className="text-xl font-black text-destructive font-numeric">
                   {(prediction.awayWinProbability * 100).toFixed(0)}%
