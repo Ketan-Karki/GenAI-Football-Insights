@@ -1,8 +1,10 @@
 import { MatchList } from "@/components/match-list";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-slate-100 dark:from-slate-950 dark:via-green-950/10 dark:to-slate-900">
+    <div className="min-h-screen bg-background">
+      <ThemeToggle />
       <div className="absolute inset-0 bg-[url('/pitch-pattern.svg')] opacity-5 pointer-events-none" />
 
       <header className="relative border-b bg-white/80 backdrop-blur-md dark:bg-slate-950/80 shadow-sm">
@@ -34,19 +36,13 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="relative container mx-auto px-4 py-12">
+      <main className="container mx-auto px-4 py-8 bg-card">
         <MatchList />
       </main>
 
-      <footer className="relative border-t bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm mt-16 py-8">
-        <div className="container mx-auto px-4 text-center space-y-2">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Powered by <span className="font-semibold">football-data.org</span>{" "}
-            API
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">
-            Built with Next.js, Go, Python ML & PostgreSQL
-          </p>
+      <footer className="bg-card border-t border-border mt-12">
+        <div className="container mx-auto px-4 py-6 text-center text-muted-foreground">
+          <p>Powered by AI & Football Data</p>
         </div>
       </footer>
     </div>

@@ -58,12 +58,12 @@ export function MatchCard({ match }: MatchCardProps) {
 
   return (
     <Card
-      className="overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 hover:border-green-500/50 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 focus-within:ring-2 focus-within:ring-green-500 focus-within:ring-offset-2 hover:scale-[1.02] hover:-translate-y-1"
+      className="overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 hover:border-primary/50 bg-card focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:scale-[1.02] hover:-translate-y-1"
       role="article"
       aria-label={`Match: ${match.homeTeam.name} vs ${match.awayTeam.name}`}
     >
       <div
-        className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2 flex items-center justify-between"
+        className="bg-primary px-4 py-2 flex items-center justify-between"
         role="banner"
       >
         <div className="flex items-center gap-2">
@@ -183,18 +183,18 @@ export function MatchCard({ match }: MatchCardProps) {
             </div>
 
             <div
-              className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 border-2 border-green-200 dark:border-green-800 shadow-sm"
+              className="bg-primary/10 dark:bg-primary/20 rounded-lg p-4 border-2 border-primary shadow-sm"
               role="region"
               aria-label="Prediction result"
             >
               <p
-                className="text-center text-sm font-bold text-green-800 dark:text-green-300 mb-2"
+                className="text-center text-sm font-bold text-primary mb-2"
                 aria-label="Prediction label"
               >
                 Predicted Winner
               </p>
               <p
-                className="text-center text-2xl font-black text-green-700 dark:text-green-300"
+                className="text-center text-2xl font-black text-primary"
                 aria-live="polite"
               >
                 {getPredictedWinner()}
@@ -271,11 +271,11 @@ export function MatchCard({ match }: MatchCardProps) {
                   {showBallKnowledge && (
                     <div
                       id="ball-knowledge-content"
-                      className="mt-3 space-y-3 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-lg p-4 border-2 border-orange-200 dark:border-orange-800 animate-in slide-in-from-top-2 duration-300"
+                      className="mt-3 space-y-3 bg-accent/10 dark:bg-accent/20 rounded-lg p-4 border-2 border-accent animate-in slide-in-from-top-2 duration-300"
                       role="region"
                       aria-label="Detailed match insights"
                     >
-                      <p className="text-xs font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wide flex items-center gap-2">
+                      <p className="text-xs font-bold text-accent uppercase tracking-wide flex items-center gap-2">
                         🧠 Ball Knowledge
                       </p>
 
