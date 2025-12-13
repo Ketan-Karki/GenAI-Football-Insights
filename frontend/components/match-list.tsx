@@ -28,18 +28,25 @@ export function MatchList() {
         setError(null);
         const data = await api.getMatches(selectedCompetition);
 
-        // Filter for upcoming matches only (scheduled or in next 30 days)
+        // Filter for upcoming matches
         const now = new Date();
-        const thirtyDaysFromNow = new Date(
-          now.getTime() + 30 * 24 * 60 * 60 * 1000
+        // Use 180 days for cup competitions (World Cup, Champions League)
+        const daysAhead = ["WC", "CL"].includes(selectedCompetition) ? 180 : 30;
+        const futureDate = new Date(
+          now.getTime() + daysAhead * 24 * 60 * 60 * 1000
         );
 
         const upcomingMatches = (data.matches || []).filter((match) => {
           const matchDate = new Date(match.utcDate);
+          // Filter out matches with placeholder teams (id: 0)
+          const hasValidTeams =
+            match.homeTeam.id !== 0 && match.awayTeam.id !== 0;
+
           return (
             (match.status === "SCHEDULED" || match.status === "TIMED") &&
             matchDate >= now &&
-            matchDate <= thirtyDaysFromNow
+            matchDate <= futureDate &&
+            hasValidTeams
           );
         });
 
@@ -98,39 +105,19 @@ export function MatchList() {
       )}
 
       {!loading && !error && matches.length === 0 && (
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-8 text-center">
-          <div className="text-4xl mb-4">🔑</div>
-          <h3 className="text-lg font-semibold mb-2">No Upcoming Matches</h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-4">
-            To see real match predictions, you need to add a Football API key.
+        <div className="bg-[#2B3139] border border-border rounded-lg p-12 text-center">
+          <div className="text-6xl mb-4">⚽</div>
+          <h3 className="text-xl font-bold text-foreground mb-2">
+            No Upcoming Matches
+          </h3>
+          <p className="text-[#848E9C] text-sm">
+            {["WC", "CL"].includes(selectedCompetition)
+              ? "No confirmed matches in the next 6 months for this competition."
+              : "No scheduled matches in the next 30 days for this competition."}
           </p>
-          <div className="bg-white dark:bg-slate-900 rounded-lg p-4 text-left max-w-md mx-auto">
-            <p className="text-sm font-semibold mb-2">Quick Setup:</p>
-            <ol className="text-sm space-y-1 text-slate-600 dark:text-slate-400">
-              <li>
-                1. Register at{" "}
-                <a
-                  href="https://www.football-data.org/client/register"
-                  target="_blank"
-                  className="text-blue-600 hover:underline"
-                >
-                  football-data.org
-                </a>
-              </li>
-              <li>2. Copy your API key</li>
-              <li>
-                3. Add to{" "}
-                <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">
-                  .env
-                </code>
-                :{" "}
-                <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">
-                  FOOTBALL_API_KEY=your_key
-                </code>
-              </li>
-              <li>4. Restart backend server</li>
-            </ol>
-          </div>
+          <p className="text-[#848E9C] text-sm mt-2">
+            Try selecting a different league above.
+          </p>
         </div>
       )}
 
