@@ -40,7 +40,7 @@ export const ShimmerButton = React.forwardRef<
           } as React.CSSProperties
         }
         className={cn(
-          "group relative z-0 flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap border-none px-6 py-3 text-black font-semibold text-sm [background:var(--background)] rounded transition-all duration-200 hover:opacity-90 active:scale-98",
+          "group relative z-0 flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap border-none px-6 py-3 text-black font-semibold text-sm [background:var(--background)] rounded transition-all duration-300 hover:opacity-90 hover:scale-105 active:scale-95 hover:shadow-lg hover:shadow-primary/30",
           "before:absolute before:inset-0 before:z-[-1] before:translate-x-[-150%] before:animate-[shimmer_var(--shimmer-duration)_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
           className
         )}

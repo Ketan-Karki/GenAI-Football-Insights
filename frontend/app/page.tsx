@@ -1,19 +1,20 @@
 import { MatchList } from "@/components/match-list";
+import { GlitchText } from "@/components/glitch-text";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background dark">
-      <header className="bg-[#0B0E11] border-b border-border">
+      <header className="bg-[#0B0E11] border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center smooth-hover hover:scale-110 hover:rotate-12 animate-pulse-glow">
               <span className="text-xl">⚽</span>
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">
-                Football Match Predictions
+                <GlitchText text="Football Match Predictions" />
               </h1>
-              <p className="text-xs text-[#848E9C]">
+              <p className="text-xs text-[#848E9C] smooth-hover hover:text-[#B7BDC6]">
                 AI-powered predictions • Premier League
               </p>
             </div>

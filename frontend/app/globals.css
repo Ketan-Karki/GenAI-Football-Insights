@@ -82,6 +82,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -127,5 +130,72 @@
     100% {
       transform: translateX(150%);
     }
+  }
+
+  @keyframes glitch {
+    0% {
+      transform: translate(0);
+    }
+    20% {
+      transform: translate(-2px, 2px);
+    }
+    40% {
+      transform: translate(-2px, -2px);
+    }
+    60% {
+      transform: translate(2px, 2px);
+    }
+    80% {
+      transform: translate(2px, -2px);
+    }
+    100% {
+      transform: translate(0);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 5px rgba(252, 213, 53, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(252, 213, 53, 0.6);
+    }
+  }
+
+  .animate-glitch {
+    animation: glitch 0.3s ease-in-out;
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .hover-tilt {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+
+  .hover-tilt:hover {
+    transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) scale(1.02);
+  }
+
+  .smooth-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }

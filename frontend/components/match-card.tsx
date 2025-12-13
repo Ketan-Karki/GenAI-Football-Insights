@@ -58,7 +58,7 @@ export function MatchCard({ match }: MatchCardProps) {
 
   return (
     <Card
-      className="overflow-hidden transition-all duration-200 border border-border bg-card hover:bg-[#252C35] focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-0"
+      className="overflow-hidden border border-border bg-card hover:bg-[#252C35] focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-0 hover-tilt smooth-hover hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 animate-fade-in-up"
       role="article"
       aria-label={`Match: ${match.homeTeam.name} vs ${match.awayTeam.name}`}
     >
@@ -85,9 +85,9 @@ export function MatchCard({ match }: MatchCardProps) {
 
       <CardContent className="p-6 space-y-6">
         <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            {match.homeTeam.crest ? (
-              <div className="relative w-12 h-12 shrink-0">
+          <div className="flex items-center gap-3 flex-1 smooth-hover hover:translate-x-1">
+            <div className="relative w-12 h-12 shrink-0 smooth-hover hover:scale-110 hover:rotate-3">
+              {match.homeTeam.crest ? (
                 <Image
                   src={match.homeTeam.crest}
                   alt={match.homeTeam.name}
@@ -95,16 +95,16 @@ export function MatchCard({ match }: MatchCardProps) {
                   className="object-contain"
                   unoptimized
                 />
-              </div>
-            ) : (
-              <div className="w-12 h-12 shrink-0 bg-linear-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center">
-                <span className="text-xl font-bold text-slate-600 dark:text-slate-400">
-                  {match.homeTeam.tla}
-                </span>
-              </div>
-            )}
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center">
+                  <span className="text-xl font-bold text-slate-600 dark:text-slate-400">
+                    {match.homeTeam.tla}
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-lg truncate text-slate-900 dark:text-slate-100">
+              <p className="font-semibold text-base truncate smooth-hover hover:text-primary">
                 {match.homeTeam.name}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">Home</p>
@@ -126,29 +126,28 @@ export function MatchCard({ match }: MatchCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {match.awayTeam.crest ? (
-              <div className="relative w-12 h-12 shrink-0">
-                <Image
-                  src={match.awayTeam.crest}
-                  alt={match.awayTeam.name}
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-12 h-12 shrink-0 bg-linear-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center">
-                <span className="text-xl font-bold text-slate-600 dark:text-slate-400">
-                  {match.awayTeam.tla}
-                </span>
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-lg truncate text-slate-900 dark:text-slate-100">
+          <div className="flex items-center gap-3 flex-1 justify-end smooth-hover hover:-translate-x-1">
+            <div className="flex-1 min-w-0 text-right">
+              <p className="font-semibold text-base truncate smooth-hover hover:text-primary">
                 {match.awayTeam.name}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">Away</p>
+            </div>
+            <div className="relative w-12 h-12 shrink-0 smooth-hover hover:scale-110 hover:-rotate-3">
+              {match.awayTeam.crest ? (
+                <Image
+                  src={match.awayTeam.crest}
+                  alt={`${match.awayTeam.name} crest`}
+                  fill
+                  className="object-contain"
+                />
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center">
+                  <span className="text-xl font-bold text-slate-600 dark:text-slate-400">
+                    {match.awayTeam.tla}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -206,44 +205,31 @@ export function MatchCard({ match }: MatchCardProps) {
               role="group"
               aria-label="Win probabilities"
             >
-              <div
-                className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border-2 border-blue-300 dark:border-blue-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all hover:shadow-md transform hover:-translate-y-0.5"
-                role="status"
-                aria-label={`${match.homeTeam.tla} win probability`}
-              >
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 truncate uppercase tracking-wide">
-                  {match.homeTeam.tla}
+              <div className="bg-[#2B3139] rounded-md p-3 text-center border border-border smooth-hover hover:scale-105 hover:border-success hover:shadow-lg hover:shadow-success/20">
+                <p className="text-xs text-[#848E9C] mb-1 uppercase tracking-wider">
+                  Home
                 </p>
-                <p className="text-xl font-black text-blue-700 dark:text-blue-300">
+                <p className="text-xl font-black text-success font-numeric">
                   {(prediction.homeWinProbability * 100).toFixed(0)}%
                 </p>
               </div>
-              <div
-                className="text-center p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border-2 border-yellow-300 dark:border-yellow-700 hover:border-yellow-500 dark:hover:border-yellow-500 transition-all hover:shadow-md transform hover:-translate-y-0.5"
-                role="status"
-                aria-label="Draw probability"
-              >
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wide">
+              <div className="bg-[#2B3139] rounded-md p-3 text-center border border-border smooth-hover hover:scale-105 hover:border-[#B7BDC6] hover:shadow-lg">
+                <p className="text-xs text-[#848E9C] mb-1 uppercase tracking-wider">
                   Draw
                 </p>
-                <p className="text-xl font-black text-yellow-700 dark:text-yellow-300">
+                <p className="text-xl font-black text-[#848E9C] font-numeric">
                   {(prediction.drawProbability * 100).toFixed(0)}%
                 </p>
               </div>
-              <div
-                className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border-2 border-red-300 dark:border-red-700 hover:border-red-500 dark:hover:border-red-500 transition-all hover:shadow-md transform hover:-translate-y-0.5"
-                role="status"
-                aria-label={`${match.awayTeam.tla} win probability`}
-              >
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 truncate uppercase tracking-wide">
-                  {match.awayTeam.tla}
+              <div className="bg-[#2B3139] rounded-md p-3 text-center border border-border smooth-hover hover:scale-105 hover:border-destructive hover:shadow-lg hover:shadow-destructive/20">
+                <p className="text-xs text-[#848E9C] mb-1 uppercase tracking-wider">
+                  Away
                 </p>
-                <p className="text-xl font-black text-red-700 dark:text-red-300">
+                <p className="text-xl font-black text-destructive font-numeric">
                   {(prediction.awayWinProbability * 100).toFixed(0)}%
                 </p>
               </div>
             </div>
-
             {prediction.ballKnowledge &&
               prediction.ballKnowledge.length > 0 && (
                 <div className="mt-3">
