@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { api, type Match, type Prediction } from "@/lib/api";
+import { Sparkles } from "./ui/sparkles";
+import { BackgroundGradient } from "./ui/background-gradient";
 
 interface MatchCardProps {
   match: Match;
@@ -56,8 +58,15 @@ export function MatchCard({ match }: MatchCardProps) {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-green-500/50 bg-linear-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800">
-      <div className="bg-linear-to-r from-green-600 to-emerald-600 px-4 py-2 flex items-center justify-between">
+    <Card
+      className="overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-green-500/50 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 focus-within:ring-2 focus-within:ring-green-500 focus-within:ring-offset-2"
+      role="article"
+      aria-label={`Match: ${match.homeTeam.name} vs ${match.awayTeam.name}`}
+    >
+      <div
+        className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2 flex items-center justify-between"
+        role="banner"
+      >
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
           <span className="text-xs font-semibold text-white uppercase tracking-wide">
@@ -104,7 +113,11 @@ export function MatchCard({ match }: MatchCardProps) {
           </div>
 
           <div className="flex items-center justify-center">
-            <div className="text-center px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+            <div
+              className="text-center px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg"
+              role="timer"
+              aria-label="Match time"
+            >
               <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
                 {matchDate.toLocaleTimeString("en-US", {
                   hour: "2-digit",
@@ -165,42 +178,82 @@ export function MatchCard({ match }: MatchCardProps) {
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                 AI Prediction
               </span>
-              <Badge className="bg-linear-to-r from-purple-600 to-pink-600 text-white border-0">
-                {(prediction.confidenceScore * 100).toFixed(0)}% Confidence
-              </Badge>
+              <BackgroundGradient
+                className="rounded-full"
+                containerClassName="inline-block"
+              >
+                <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0">
+                  {(prediction.confidenceScore * 100).toFixed(0)}% Confidence
+                </Badge>
+              </BackgroundGradient>
             </div>
 
-            <div className="bg-linear-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 border-2 border-green-200 dark:border-green-800">
-              <p className="text-center text-sm font-bold text-green-700 dark:text-green-400 mb-2">
+            <div
+              className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 border-2 border-green-200 dark:border-green-800 shadow-sm"
+              role="region"
+              aria-label="Prediction result"
+            >
+              <p
+                className="text-center text-sm font-bold text-green-800 dark:text-green-300 mb-2"
+                aria-label="Prediction label"
+              >
                 Predicted Winner
               </p>
-              <p className="text-center text-2xl font-black bg-linear-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                {getPredictedWinner()}
-              </p>
+              <div className="relative">
+                <Sparkles
+                  particleColor="#10b981"
+                  particleDensity={30}
+                  minSize={0.6}
+                  maxSize={1.4}
+                  className="absolute inset-0"
+                />
+                <p
+                  className="relative z-10 text-center text-2xl font-black text-green-700 dark:text-green-300"
+                  aria-live="polite"
+                >
+                  {getPredictedWinner()}
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <div className="text-center p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1 truncate">
+            <div
+              className="grid grid-cols-3 gap-3"
+              role="group"
+              aria-label="Win probabilities"
+            >
+              <div
+                className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border-2 border-blue-300 dark:border-blue-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all hover:shadow-md transform hover:-translate-y-0.5"
+                role="status"
+                aria-label={`${match.homeTeam.tla} win probability`}
+              >
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 truncate uppercase tracking-wide">
                   {match.homeTeam.tla}
                 </p>
-                <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                <p className="text-xl font-black text-blue-700 dark:text-blue-300">
                   {(prediction.homeWinProbability * 100).toFixed(0)}%
                 </p>
               </div>
-              <div className="text-center p-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800">
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">
+              <div
+                className="text-center p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border-2 border-yellow-300 dark:border-yellow-700 hover:border-yellow-500 dark:hover:border-yellow-500 transition-all hover:shadow-md transform hover:-translate-y-0.5"
+                role="status"
+                aria-label="Draw probability"
+              >
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 uppercase tracking-wide">
                   Draw
                 </p>
-                <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+                <p className="text-xl font-black text-yellow-700 dark:text-yellow-300">
                   {(prediction.drawProbability * 100).toFixed(0)}%
                 </p>
               </div>
-              <div className="text-center p-2 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1 truncate">
+              <div
+                className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border-2 border-red-300 dark:border-red-700 hover:border-red-500 dark:hover:border-red-500 transition-all hover:shadow-md transform hover:-translate-y-0.5"
+                role="status"
+                aria-label={`${match.awayTeam.tla} win probability`}
+              >
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 truncate uppercase tracking-wide">
                   {match.awayTeam.tla}
                 </p>
-                <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                <p className="text-xl font-black text-red-700 dark:text-red-300">
                   {(prediction.awayWinProbability * 100).toFixed(0)}%
                 </p>
               </div>
@@ -211,7 +264,9 @@ export function MatchCard({ match }: MatchCardProps) {
                 <div className="mt-3">
                   <button
                     onClick={() => setShowBallKnowledge(!showBallKnowledge)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                    aria-expanded={showBallKnowledge}
+                    aria-controls="ball-knowledge-content"
                   >
                     <span className="text-lg">⚽</span>
                     <span>
@@ -227,14 +282,23 @@ export function MatchCard({ match }: MatchCardProps) {
                   </button>
 
                   {showBallKnowledge && (
-                    <div className="mt-3 space-y-3 bg-linear-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-lg p-4 border-2 border-orange-200 dark:border-orange-800">
-                      <p className="text-xs font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide">
+                    <div
+                      id="ball-knowledge-content"
+                      className="mt-3 space-y-3 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-lg p-4 border-2 border-orange-200 dark:border-orange-800 animate-in slide-in-from-top-2 duration-300"
+                      role="region"
+                      aria-label="Detailed match insights"
+                    >
+                      <p className="text-xs font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wide flex items-center gap-2">
                         🧠 Ball Knowledge
                       </p>
 
                       {prediction.teamStats && (
-                        <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700 dark:text-slate-200">
-                          <div className="bg-white/60 dark:bg-slate-900/60 rounded-md p-2">
+                        <div
+                          className="grid grid-cols-2 gap-3 text-xs text-slate-800 dark:text-slate-100"
+                          role="group"
+                          aria-label="Team statistics"
+                        >
+                          <div className="bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
                             <p className="font-semibold mb-1">Recent Form</p>
                             <p>
                               {match.homeTeam.shortName}:{" "}
@@ -247,7 +311,7 @@ export function MatchCard({ match }: MatchCardProps) {
                               % wins
                             </p>
                           </div>
-                          <div className="bg-white/60 dark:bg-slate-900/60 rounded-md p-2">
+                          <div className="bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
                             <p className="font-semibold mb-1">Goals / Game</p>
                             <p>
                               {match.homeTeam.shortName}:{" "}
@@ -279,7 +343,11 @@ export function MatchCard({ match }: MatchCardProps) {
                       {prediction.keyPlayers &&
                         (prediction.keyPlayers.home.length > 0 ||
                           prediction.keyPlayers.away.length > 0) && (
-                          <div className="text-[11px] text-slate-700 dark:text-slate-200 bg-white/50 dark:bg-slate-900/40 rounded-md p-2">
+                          <div
+                            className="text-xs text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700"
+                            role="group"
+                            aria-label="Key players"
+                          >
                             <p className="font-semibold mb-2">Key players</p>
 
                             {prediction.keyPlayers.home.length > 0 && (
@@ -321,15 +389,19 @@ export function MatchCard({ match }: MatchCardProps) {
                       {prediction.insights &&
                         prediction.insights.length > 0 && (
                           <div className="space-y-2">
-                            <p className="text-[10px] font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                            <p className="text-xs font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wide flex items-center gap-1">
                               🤖 ML Insights
                             </p>
                             {prediction.insights.map((insight, idx) => (
                               <div
                                 key={idx}
-                                className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-linear-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded p-2"
+                                className="flex items-start gap-2 text-xs text-slate-800 dark:text-slate-200 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded-md p-3 border border-orange-100 dark:border-orange-900/50 hover:border-orange-300 dark:hover:border-orange-700 transition-colors"
+                                role="listitem"
                               >
-                                <span className="text-orange-500 font-bold">
+                                <span
+                                  className="text-orange-600 dark:text-orange-400 font-bold text-sm"
+                                  aria-hidden="true"
+                                >
                                   •
                                 </span>
                                 <span>{insight}</span>
@@ -342,15 +414,24 @@ export function MatchCard({ match }: MatchCardProps) {
                         prediction.ballKnowledge.map((insight, idx) => (
                           <div
                             key={idx}
-                            className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 rounded p-2"
+                            className="flex items-start gap-2 text-xs text-slate-800 dark:text-slate-200 bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 transition-colors"
+                            role="listitem"
                           >
-                            <span className="text-orange-500 font-bold">•</span>
+                            <span
+                              className="text-orange-600 dark:text-orange-400 font-bold"
+                              aria-hidden="true"
+                            >
+                              •
+                            </span>
                             <span>{insight}</span>
                           </div>
                         ))}
 
                       {prediction.modelVersion && (
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 italic mt-1 pt-2 border-t border-orange-200 dark:border-orange-800">
+                        <p
+                          className="text-xs text-slate-600 dark:text-slate-400 italic mt-2 pt-3 border-t border-orange-200 dark:border-orange-800"
+                          role="contentinfo"
+                        >
                           Engine: {prediction.modelVersion}
                           {prediction.modelAccuracy && (
                             <span className="ml-2">
