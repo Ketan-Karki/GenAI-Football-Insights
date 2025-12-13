@@ -146,4 +146,13 @@
   .animate-gradient {
     animation: gradient 15s ease infinite;
   }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-150%);
+    }
+    100% {
+      transform: translateX(150%);
+    }
+  }
 }

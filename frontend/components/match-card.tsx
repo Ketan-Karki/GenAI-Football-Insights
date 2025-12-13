@@ -5,8 +5,7 @@ import Image from "next/image";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { api, type Match, type Prediction } from "@/lib/api";
-import { Sparkles } from "./ui/sparkles";
-import { BackgroundGradient } from "./ui/background-gradient";
+import { ShimmerButton } from "./ui/shimmer-button";
 
 interface MatchCardProps {
   match: Match;
@@ -59,7 +58,7 @@ export function MatchCard({ match }: MatchCardProps) {
 
   return (
     <Card
-      className="overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-green-500/50 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 focus-within:ring-2 focus-within:ring-green-500 focus-within:ring-offset-2"
+      className="overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 hover:border-green-500/50 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 focus-within:ring-2 focus-within:ring-green-500 focus-within:ring-offset-2 hover:scale-[1.02] hover:-translate-y-1"
       role="article"
       aria-label={`Match: ${match.homeTeam.name} vs ${match.awayTeam.name}`}
     >
@@ -178,14 +177,9 @@ export function MatchCard({ match }: MatchCardProps) {
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                 AI Prediction
               </span>
-              <BackgroundGradient
-                className="rounded-full"
-                containerClassName="inline-block"
-              >
-                <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0">
-                  {(prediction.confidenceScore * 100).toFixed(0)}% Confidence
-                </Badge>
-              </BackgroundGradient>
+              <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0">
+                {(prediction.confidenceScore * 100).toFixed(0)}% Confidence
+              </Badge>
             </div>
 
             <div
@@ -199,21 +193,12 @@ export function MatchCard({ match }: MatchCardProps) {
               >
                 Predicted Winner
               </p>
-              <div className="relative">
-                <Sparkles
-                  particleColor="#10b981"
-                  particleDensity={30}
-                  minSize={0.6}
-                  maxSize={1.4}
-                  className="absolute inset-0"
-                />
-                <p
-                  className="relative z-10 text-center text-2xl font-black text-green-700 dark:text-green-300"
-                  aria-live="polite"
-                >
-                  {getPredictedWinner()}
-                </p>
-              </div>
+              <p
+                className="text-center text-2xl font-black text-green-700 dark:text-green-300"
+                aria-live="polite"
+              >
+                {getPredictedWinner()}
+              </p>
             </div>
 
             <div
@@ -262,24 +247,26 @@ export function MatchCard({ match }: MatchCardProps) {
             {prediction.ballKnowledge &&
               prediction.ballKnowledge.length > 0 && (
                 <div className="mt-3">
-                  <button
+                  <ShimmerButton
                     onClick={() => setShowBallKnowledge(!showBallKnowledge)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                    className="w-full font-semibold text-sm shadow-lg"
                     aria-expanded={showBallKnowledge}
                     aria-controls="ball-knowledge-content"
+                    background="linear-gradient(90deg, #f97316, #f59e0b)"
+                    shimmerDuration="2.5s"
                   >
                     <span className="text-lg">⚽</span>
-                    <span>
+                    <span className="mx-2">
                       {showBallKnowledge ? "Hide" : "Show"} Ball Knowledge
                     </span>
                     <span
-                      className={`transition-transform ${
+                      className={`transition-transform duration-300 ${
                         showBallKnowledge ? "rotate-180" : ""
                       }`}
                     >
                       ▼
                     </span>
-                  </button>
+                  </ShimmerButton>
 
                   {showBallKnowledge && (
                     <div
