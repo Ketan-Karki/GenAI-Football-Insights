@@ -44,74 +44,38 @@
 }
 
 :root {
-  --radius: 0.75rem;
-  /* Sports Theme - Light Mode */
-  --background: oklch(0.99 0.005 120); /* Soft white with green tint */
-  --foreground: oklch(0.15 0.02 140); /* Deep forest green */
-  --card: oklch(1 0 0); /* Pure white cards */
-  --card-foreground: oklch(0.15 0.02 140);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.02 140);
-  --primary: oklch(0.55 0.18 145); /* Football pitch green */
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.01 120); /* Light green tint */
-  --secondary-foreground: oklch(0.15 0.02 140);
-  --muted: oklch(0.96 0.01 120);
-  --muted-foreground: oklch(0.45 0.02 140);
-  --accent: oklch(0.65 0.2 35); /* Vibrant orange (ball/energy) */
-  --accent-foreground: oklch(0.99 0 0);
-  --destructive: oklch(0.6 0.25 25); /* Red card red */
-  --border: oklch(0.9 0.01 120);
-  --input: oklch(0.95 0.01 120);
-  --ring: oklch(0.55 0.18 145);
-  --chart-1: oklch(0.6 0.2 145); /* Green */
-  --chart-2: oklch(0.65 0.22 250); /* Blue */
-  --chart-3: oklch(0.7 0.2 35); /* Orange */
-  --chart-4: oklch(0.6 0.25 25); /* Red */
-  --chart-5: oklch(0.65 0.15 280); /* Purple */
-  --sidebar: oklch(0.98 0.005 120);
-  --sidebar-foreground: oklch(0.15 0.02 140);
-  --sidebar-primary: oklch(0.55 0.18 145);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.95 0.01 120);
-  --sidebar-accent-foreground: oklch(0.15 0.02 140);
-  --sidebar-border: oklch(0.9 0.01 120);
-  --sidebar-ring: oklch(0.55 0.18 145);
-}
+  --radius: 0.5rem;
+  /* Crypto Trading Platform Design - Dark Mode Only */
+  --background: #0b0e11;
+  --foreground: #ffffff;
+  --card: #1e2329;
+  --card-foreground: #ffffff;
+  --popover: #1e2329;
+  --popover-foreground: #ffffff;
+  --primary: #fcd535;
+  --primary-foreground: #000000;
+  --secondary: #2b3139;
+  --secondary-foreground: #ffffff;
+  --muted: #2b3139;
+  --muted-foreground: #848e9c;
+  --accent: #fcd535;
+  --accent-foreground: #000000;
+  --destructive: #f6465d;
+  --destructive-foreground: #ffffff;
+  --border: #2b3139;
+  --input: #1e2329;
+  --ring: #fcd535;
+  --success: #0ecb81;
+  --warning: #f0b90b;
+  --info: #3dcfff;
 
-.dark {
-  /* Sports Theme - Dark Mode (Night Stadium) */
-  --background: oklch(0.12 0.01 140); /* Dark pitch green */
-  --foreground: oklch(0.95 0.01 120); /* Bright white (stadium lights) */
-  --card: oklch(0.18 0.015 140); /* Darker green cards */
-  --card-foreground: oklch(0.95 0.01 120);
-  --popover: oklch(0.2 0.015 140);
-  --popover-foreground: oklch(0.95 0.01 120);
-  --primary: oklch(0.65 0.2 145); /* Bright pitch green */
-  --primary-foreground: oklch(0.12 0.01 140);
-  --secondary: oklch(0.25 0.02 140); /* Muted green */
-  --secondary-foreground: oklch(0.95 0.01 120);
-  --muted: oklch(0.25 0.02 140);
-  --muted-foreground: oklch(0.65 0.01 120);
-  --accent: oklch(0.7 0.22 35); /* Bright orange (floodlights) */
-  --accent-foreground: oklch(0.12 0.01 140);
-  --destructive: oklch(0.65 0.25 25); /* Bright red */
-  --border: oklch(0.3 0.02 140);
-  --input: oklch(0.25 0.02 140);
-  --ring: oklch(0.65 0.2 145);
-  --chart-1: oklch(0.65 0.2 145); /* Green */
-  --chart-2: oklch(0.7 0.22 250); /* Blue */
-  --chart-3: oklch(0.75 0.2 35); /* Orange */
-  --chart-4: oklch(0.65 0.25 25); /* Red */
-  --chart-5: oklch(0.7 0.18 280); /* Purple */
-  --sidebar: oklch(0.16 0.015 140);
-  --sidebar-foreground: oklch(0.95 0.01 120);
-  --sidebar-primary: oklch(0.65 0.2 145);
-  --sidebar-primary-foreground: oklch(0.12 0.01 140);
-  --sidebar-accent: oklch(0.25 0.02 140);
-  --sidebar-accent-foreground: oklch(0.95 0.01 120);
-  --sidebar-border: oklch(0.3 0.02 140);
-  --sidebar-ring: oklch(0.65 0.2 145);
+  /* Additional semantic colors */
+  --text-primary: #ffffff;
+  --text-secondary: #b7bdc6;
+  --text-tertiary: #848e9c;
+  --text-disabled: #5e6673;
+  --bg-hover: #2b3139;
+  --bg-tertiary: #2b3139;
 }
 
 @layer base {
@@ -120,6 +84,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Oxygen, Ubuntu, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .font-numeric {
+    font-family: "SF Mono", Monaco, Consolas, "Courier New", monospace;
   }
 }
 

@@ -58,23 +58,23 @@ export function MatchCard({ match }: MatchCardProps) {
 
   return (
     <Card
-      className="overflow-hidden hover:shadow-2xl transition-all duration-300 border-2 hover:border-primary/50 bg-card focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:scale-[1.02] hover:-translate-y-1"
+      className="overflow-hidden transition-all duration-200 border border-border bg-card hover:bg-[#252C35] focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-0"
       role="article"
       aria-label={`Match: ${match.homeTeam.name} vs ${match.awayTeam.name}`}
     >
       <div
-        className="bg-primary px-4 py-2 flex items-center justify-between"
+        className="bg-[#0B0E11] px-4 py-3 flex items-center justify-between border-b border-border"
         role="banner"
       >
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-          <span className="text-xs font-semibold text-white uppercase tracking-wide">
+          <div className="w-2 h-2 bg-primary rounded-full" />
+          <span className="text-xs font-medium text-[#848E9C] uppercase tracking-wider">
             Matchday {match.matchday}
           </span>
         </div>
         <Badge
           variant="secondary"
-          className="bg-white/20 text-white border-white/30"
+          className="bg-[#2B3139] text-[#B7BDC6] border-[#2B3139] text-xs font-medium"
         >
           {matchDate.toLocaleDateString("en-US", {
             month: "short",
@@ -174,27 +174,27 @@ export function MatchCard({ match }: MatchCardProps) {
         {isUpcoming && prediction && !loadingPrediction && (
           <div className="pt-4 border-t-2 border-dashed border-slate-200 dark:border-slate-700 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+              <span className="text-xs font-medium text-[#848E9C] uppercase tracking-wider">
                 AI Prediction
               </span>
-              <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0">
+              <Badge className="bg-success/10 text-success border border-success/20 text-xs font-medium px-2 py-1">
                 {(prediction.confidenceScore * 100).toFixed(0)}% Confidence
               </Badge>
             </div>
 
             <div
-              className="bg-primary/10 dark:bg-primary/20 rounded-lg p-4 border-2 border-primary shadow-sm"
+              className="bg-[#2B3139] rounded-lg p-4 border border-border"
               role="region"
               aria-label="Prediction result"
             >
               <p
-                className="text-center text-sm font-bold text-primary mb-2"
+                className="text-center text-xs font-medium text-[#848E9C] mb-2 uppercase tracking-wider"
                 aria-label="Prediction label"
               >
                 Predicted Winner
               </p>
               <p
-                className="text-center text-2xl font-black text-primary"
+                className="text-center text-2xl font-bold text-primary font-numeric"
                 aria-live="polite"
               >
                 {getPredictedWinner()}
@@ -271,11 +271,11 @@ export function MatchCard({ match }: MatchCardProps) {
                   {showBallKnowledge && (
                     <div
                       id="ball-knowledge-content"
-                      className="mt-3 space-y-3 bg-accent/10 dark:bg-accent/20 rounded-lg p-4 border-2 border-accent animate-in slide-in-from-top-2 duration-300"
+                      className="mt-3 space-y-3 bg-[#2B3139] rounded-lg p-4 border border-border animate-in slide-in-from-top-2 duration-200"
                       role="region"
                       aria-label="Detailed match insights"
                     >
-                      <p className="text-xs font-bold text-accent uppercase tracking-wide flex items-center gap-2">
+                      <p className="text-xs font-medium text-[#848E9C] uppercase tracking-wider flex items-center gap-2">
                         🧠 Ball Knowledge
                       </p>
 
