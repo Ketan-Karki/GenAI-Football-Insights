@@ -50,10 +50,8 @@ func main() {
 
 	// Competitions to ingest
 	// Club competitions: PL (Premier League), PD (La Liga), BL1 (Bundesliga), SA (Serie A), FL1 (Ligue 1), CL (Champions League)
-	// International: WC (World Cup), QCAF (CAF Qualifiers), QAFC (AFC Qualifiers), QUFA (UEFA Qualifiers),
-	//                QOFC (OFC Qualifiers), QCBL (CONMEBOL Qualifiers), UNL (UEFA Nations League),
-	//                ECQ (Euro Qualifiers), EC (European Championship), CA (Copa America)
-	competitions := []string{"PL", "PD", "BL1", "SA", "FL1", "CL", "WC", "QCAF", "QAFC", "QUFA", "QOFC", "QCBL", "UNL", "ECQ", "EC", "CA"}
+	// International: WC (World Cup), EC (European Championship)
+	competitions := []string{"PL", "PD", "BL1", "SA", "FL1", "CL", "WC", "EC"}
 	seasons := []string{"2024", "2025"}
 
 	log.Println("🚀 Starting data ingestion...")
