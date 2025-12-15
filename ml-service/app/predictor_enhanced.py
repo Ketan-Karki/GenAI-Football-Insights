@@ -76,9 +76,16 @@ class EnhancedMatchPredictor:
             outcome_map = {0: 'AWAY_WIN', 1: 'DRAW', 2: 'HOME_WIN'}
             predicted_outcome = outcome_map[predicted_class]
             
-            # Calculate confidence
-            max_prob = max(probabilities)
-            confidence = min(0.95, max_prob)
+            # Calculate confidence based on prediction certainty
+            # Higher confidence when there's a clear winner (large gap between top probabilities)
+            sorted_probs = sorted(probabilities, reverse=True)
+            prob_gap = sorted_probs[0] - sorted_probs[1]  # Gap between 1st and 2nd
+            
+            # Confidence formula: base probability + bonus for certainty
+            # Range: 0.5 (uncertain) to 0.95 (very certain)
+            base_confidence = sorted_probs[0]  # Winning probability
+            certainty_bonus = prob_gap * 0.3   # Bonus for clear separation
+            confidence = min(0.95, max(0.50, base_confidence * 0.7 + certainty_bonus))
             
             # Get feature values for insights
             features_dict = X.iloc[0].to_dict()
