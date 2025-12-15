@@ -95,8 +95,27 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 		// If not found by external ID, try internal ID
 		matchData, err = h.service.GetMatchFromDB(matchID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get match details"})
-			return
+			// If still not found, fetch from API as fallback
+			match, apiErr := h.service.GetMatch(matchID)
+			if apiErr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get match details"})
+				return
+			}
+			// Convert Match struct to map for processing
+			matchData = map[string]interface{}{
+				"id":       match.ID,
+				"matchday": match.Matchday,
+				"homeTeam": map[string]interface{}{
+					"id":         match.HomeTeam.ID,
+					"externalId": match.HomeTeam.ID,
+					"name":       match.HomeTeam.Name,
+				},
+				"awayTeam": map[string]interface{}{
+					"id":         match.AwayTeam.ID,
+					"externalId": match.AwayTeam.ID,
+					"name":       match.AwayTeam.Name,
+				},
+			}
 		}
 	}
 

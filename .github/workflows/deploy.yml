@@ -1,0 +1,54 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/football-prediction
+
+            # Pull latest changes
+            git pull origin main
+
+            # Build frontend
+            cd frontend
+            npm install
+            npm run build
+
+            # Build backend
+            cd ../backend
+            go build -o football-api cmd/api/main.go
+            chmod +x football-api
+
+            # Update ML service dependencies
+            cd ../ml-service
+            source venv/bin/activate
+            pip install -r requirements.txt
+            deactivate
+
+            # Restart all services
+            sudo systemctl restart football-api
+            sudo systemctl restart football-ml
+            sudo systemctl restart football-frontend
+
+            # Check service status
+            sudo systemctl status football-api --no-pager
+            sudo systemctl status football-ml --no-pager
+            sudo systemctl status football-frontend --no-pager
+
+            echo "Deployment completed successfully!"
