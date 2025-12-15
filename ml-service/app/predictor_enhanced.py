@@ -77,15 +77,19 @@ class EnhancedMatchPredictor:
             predicted_outcome = outcome_map[predicted_class]
             
             # Calculate confidence based on prediction certainty
-            # Higher confidence when there's a clear winner (large gap between top probabilities)
+            # Use entropy-based confidence: low entropy = high confidence
+            # When probabilities are spread out (uncertain), entropy is high
+            # When one probability dominates (certain), entropy is low
             sorted_probs = sorted(probabilities, reverse=True)
-            prob_gap = sorted_probs[0] - sorted_probs[1]  # Gap between 1st and 2nd
             
-            # Confidence formula: base probability + bonus for certainty
-            # Range: 0.5 (uncertain) to 0.95 (very certain)
-            base_confidence = sorted_probs[0]  # Winning probability
-            certainty_bonus = prob_gap * 0.3   # Bonus for clear separation
-            confidence = min(0.95, max(0.50, base_confidence * 0.7 + certainty_bonus))
+            # Calculate normalized entropy (0 = certain, 1 = maximum uncertainty)
+            entropy = -sum(p * np.log(p + 1e-10) for p in probabilities if p > 0)
+            max_entropy = np.log(len(probabilities))  # Maximum possible entropy
+            normalized_entropy = entropy / max_entropy if max_entropy > 0 else 0
+            
+            # Convert to confidence: high entropy = low confidence
+            # Scale to range [0.55, 0.95] for better UX
+            confidence = 0.95 - (normalized_entropy * 0.40)
             
             # Get feature values for insights
             features_dict = X.iloc[0].to_dict()
