@@ -48,24 +48,37 @@ func main() {
 	// Create API client
 	client := football.NewClient(apiKey)
 
-	// Competitions to ingest
+	// Competitions to ingest with their respective seasons
 	// Club competitions: PL (Premier League), PD (La Liga), BL1 (Bundesliga), SA (Serie A), FL1 (Ligue 1), CL (Champions League)
-	// International: WC (World Cup), EC (European Championship)
-	competitions := []string{"PL", "PD", "BL1", "SA", "FL1", "CL", "WC", "EC"}
-	seasons := []string{"2024", "2025"}
+	// International: WC (World Cup - 2022), EC (European Championship - 2024)
+	type CompetitionConfig struct {
+		Code    string
+		Seasons []string
+	}
+
+	competitions := []CompetitionConfig{
+		{Code: "PL", Seasons: []string{"2024", "2025"}},
+		{Code: "PD", Seasons: []string{"2024", "2025"}},
+		{Code: "BL1", Seasons: []string{"2024", "2025"}},
+		{Code: "SA", Seasons: []string{"2024", "2025"}},
+		{Code: "FL1", Seasons: []string{"2024", "2025"}},
+		{Code: "CL", Seasons: []string{"2024", "2025"}},
+		{Code: "WC", Seasons: []string{"2022"}},
+		{Code: "EC", Seasons: []string{"2024"}},
+	}
 
 	log.Println("🚀 Starting data ingestion...")
 
 	for _, comp := range competitions {
-		for _, season := range seasons {
-			log.Printf("📥 Fetching %s season %s...", comp, season)
+		for _, season := range comp.Seasons {
+			log.Printf("📥 Fetching %s season %s...", comp.Code, season)
 
 			// Fetch matches with retry on rate limit
 			var matches *football.MatchesResponse
 			var err error
 
 			for retries := 0; retries < 3; retries++ {
-				matches, err = client.GetMatches(comp, season)
+				matches, err = client.GetMatches(comp.Code, season)
 				if err == nil {
 					break
 				}
@@ -78,7 +91,7 @@ func main() {
 					continue
 				}
 
-				log.Printf("❌ Error fetching %s %s: %v", comp, season, err)
+				log.Printf("❌ Error fetching %s %s: %v", comp.Code, season, err)
 				break
 			}
 
@@ -87,7 +100,7 @@ func main() {
 			}
 
 			if matches == nil || len(matches.Matches) == 0 {
-				log.Printf("⚠️  No matches found for %s %s", comp, season)
+				log.Printf("⚠️  No matches found for %s %s", comp.Code, season)
 				time.Sleep(7 * time.Second)
 				continue
 			}
@@ -108,7 +121,7 @@ func main() {
 				saved++
 			}
 
-			log.Printf("✅ Saved %d/%d matches for %s %s", saved, len(matches.Matches), comp, season)
+			log.Printf("✅ Saved %d/%d matches for %s %s", saved, len(matches.Matches), comp.Code, season)
 
 			// Rate limiting - API allows 10 req/min
 			time.Sleep(7 * time.Second)
