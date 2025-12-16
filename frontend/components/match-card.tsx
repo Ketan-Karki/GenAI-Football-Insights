@@ -383,23 +383,6 @@ export function MatchCard({ match }: MatchCardProps) {
                           </div>
                         )}
 
-                      {prediction.ballKnowledge &&
-                        prediction.ballKnowledge.map((insight, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-start gap-2 text-xs text-slate-800 dark:text-slate-200 bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 transition-colors"
-                            role="listitem"
-                          >
-                            <span
-                              className="text-orange-600 dark:text-orange-400 font-bold"
-                              aria-hidden="true"
-                            >
-                              •
-                            </span>
-                            <span>{insight}</span>
-                          </div>
-                        ))}
-
                       {prediction.modelVersion && (
                         <p
                           className="text-xs text-slate-600 dark:text-slate-400 italic mt-2 pt-3 border-t border-orange-200 dark:border-orange-800"
