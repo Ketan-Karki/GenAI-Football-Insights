@@ -12,6 +12,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 2 # Fetch last 2 commits to detect changes
+
+      - name: Check for ML service changes
+        id: ml_changes
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -q '^ml-service/'; then
+            echo "ml_changed=true" >> $GITHUB_OUTPUT
+            echo "ML service changes detected"
+          else
+            echo "ml_changed=false" >> $GITHUB_OUTPUT
+            echo "No ML service changes"
+          fi
 
       - name: Deploy to server
         uses: appleboy/ssh-action@master
@@ -26,29 +39,48 @@ jobs:
             git pull origin main
 
             # Build frontend
+            echo "📦 Building frontend..."
             cd frontend
             npm install
             npm run build
 
             # Build backend
+            echo "📦 Building backend..."
             cd ../backend
             go build -o football-api cmd/api/main.go
             chmod +x football-api
 
             # Update ML service dependencies
+            echo "📦 Updating ML service..."
             cd ../ml-service
             source venv/bin/activate
             pip install -r requirements.txt
+
+            # Retrain model if ML service changed
+            if [ "${{ steps.ml_changes.outputs.ml_changed }}" = "true" ]; then
+              echo "🤖 ML service changes detected - retraining model..."
+              export DATABASE_URL="postgresql://ketan:postgres@localhost:5432/football_db?sslmode=disable"
+              python app/train_enhanced.py
+              echo "✅ Model retrained successfully"
+            else
+              echo "⏭️  No ML service changes - skipping retraining"
+            fi
+
             deactivate
 
             # Restart all services
+            echo "🔄 Restarting all services..."
             sudo systemctl restart football-api
             sudo systemctl restart football-ml
             sudo systemctl restart football-frontend
 
-            # Check service status
-            sudo systemctl status football-api --no-pager
-            sudo systemctl status football-ml --no-pager
-            sudo systemctl status football-frontend --no-pager
+            # Wait for services to start
+            sleep 3
 
-            echo "Deployment completed successfully!"
+            # Check service status
+            echo "📊 Service status:"
+            sudo systemctl status football-api --no-pager | head -n 5
+            sudo systemctl status football-ml --no-pager | head -n 5
+            sudo systemctl status football-frontend --no-pager | head -n 5
+
+            echo "✅ Deployment completed successfully!"

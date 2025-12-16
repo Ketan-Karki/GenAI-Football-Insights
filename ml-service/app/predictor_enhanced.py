@@ -116,80 +116,86 @@ class EnhancedMatchPredictor:
     
     def _generate_insights(self, features: dict, probabilities: np.ndarray, 
                           home_team_name: str = None, away_team_name: str = None) -> list:
-        """Generate human-readable insights from features with actual team names"""
+        """Generate insights that support the actual prediction outcome"""
         insights = []
         
-        # Debug: print received team names
-        print(f"🔍 Generating insights - Home: {home_team_name}, Away: {away_team_name}")
-        
-        # Use team names if provided, otherwise fall back to "Home"/"Away"
+        # Use team names if provided
         home_label = home_team_name if home_team_name else "Home team"
         away_label = away_team_name if away_team_name else "Away team"
         
-        # Form analysis - always show if there's any difference
-        form_diff = features.get('form_difference', 0)
-        if abs(form_diff) > 0.1:
-            better_team = home_label if form_diff > 0 else away_label
-            if abs(form_diff) > 0.3:
-                insights.append(f"{better_team} in significantly better recent form")
-            else:
-                insights.append(f"{better_team} has slight form advantage")
+        # Determine predicted outcome
+        # probabilities order: [AWAY_WIN, DRAW, HOME_WIN]
+        home_win_prob = probabilities[2]
+        draw_prob = probabilities[1]
+        away_win_prob = probabilities[0]
         
-        # Attack strength - always show
-        attack_diff = features.get('attack_strength_diff', 0)
-        if abs(attack_diff) > 0.3:
-            stronger = home_label if attack_diff > 0 else away_label
-            insights.append(f"{stronger} has stronger attacking threat ({abs(attack_diff):.1f} goals/game advantage)")
-        elif abs(attack_diff) > 0.1:
-            stronger = home_label if attack_diff > 0 else away_label
-            insights.append(f"{stronger} slightly more potent in attack")
+        predicted_winner = None
+        if home_win_prob > draw_prob and home_win_prob > away_win_prob:
+            predicted_winner = "home"
+            winner_label = home_label
+            loser_label = away_label
+        elif away_win_prob > draw_prob and away_win_prob > home_win_prob:
+            predicted_winner = "away"
+            winner_label = away_label
+            loser_label = home_label
+        else:
+            predicted_winner = "draw"
         
-        # Defensive strength - always show
-        defense_diff = features.get('defense_strength_diff', 0)
-        if abs(defense_diff) > 0.3:
-            stronger = home_label if defense_diff > 0 else away_label
-            insights.append(f"{stronger} has superior defensive organization")
-        elif abs(defense_diff) > 0.1:
-            stronger = home_label if defense_diff > 0 else away_label
-            insights.append(f"{stronger} slightly more solid defensively")
-        
-        # Midfield control (derived from possession/pass completion)
-        possession_diff = features.get('possession_diff', 0)
-        if abs(possession_diff) > 5:
-            controller = home_label if possession_diff > 0 else away_label
-            insights.append(f"{controller} likely to control midfield and possession")
-        
-        # Player quality and key players
-        player_diff = features.get('player_quality_diff', 0)
-        if abs(player_diff) > 0.2:
-            better = home_label if player_diff > 0 else away_label
-            insights.append(f"{better}'s key players in better form")
-        
-        # Head-to-head history
-        h2h_home_rate = features.get('h2h_home_win_rate', 0)
-        h2h_away_rate = features.get('h2h_away_win_rate', 0)
-        if h2h_home_rate > 0.5:
-            insights.append(f"{home_label} has historical advantage ({h2h_home_rate:.0%} win rate)")
-        elif h2h_away_rate > 0.5:
-            insights.append(f"{away_label} has historical advantage ({h2h_away_rate:.0%} win rate)")
-        
-        # Tactical matchup
-        home_attack = features.get('home_goals_scored_avg', 0)
-        away_defense = features.get('away_goals_conceded_avg', 0)
-        if home_attack > 2.0 and away_defense > 1.5:
-            insights.append(f"Tactical battle: {home_label}'s attack vs {away_label}'s vulnerable defense")
-        
-        # Prediction confidence
-        max_prob = max(probabilities)
-        if max_prob > 0.65:
-            insights.append(f"High confidence prediction ({max_prob:.0%})")
-        elif max_prob < 0.4:
-            insights.append("Evenly matched - outcome highly uncertain")
-        
-        # Ensure we always have at least 3-5 insights
-        if len(insights) < 3:
+        # Generate insights that support the prediction
+        if predicted_winner != "draw":
+            # Get feature values
+            form_diff = features.get('form_difference', 0)
+            attack_diff = features.get('attack_strength_diff', 0)
+            defense_diff = features.get('defense_strength_diff', 0)
+            h2h_home_rate = features.get('h2h_home_win_rate', 0)
+            h2h_away_rate = features.get('h2h_away_win_rate', 0)
+            home_goals_pg = features.get('home_goals_per_game', 0)
+            away_goals_pg = features.get('away_goals_per_game', 0)
+            
+            # Form insight - favor predicted winner
+            if predicted_winner == "home" and form_diff > 0.1:
+                insights.append(f"{winner_label} in better recent form")
+            elif predicted_winner == "away" and form_diff < -0.1:
+                insights.append(f"{winner_label} in better recent form")
+            
+            # Attack insight - favor predicted winner
+            if predicted_winner == "home" and attack_diff > 0.2:
+                insights.append(f"{winner_label} has stronger attacking threat ({home_goals_pg:.1f} goals/game)")
+            elif predicted_winner == "away" and attack_diff < -0.2:
+                insights.append(f"{winner_label} has stronger attacking threat ({away_goals_pg:.1f} goals/game)")
+            
+            # Defense insight - favor predicted winner
+            if predicted_winner == "home" and defense_diff > 0.2:
+                insights.append(f"{winner_label} more solid defensively")
+            elif predicted_winner == "away" and defense_diff < -0.2:
+                insights.append(f"{winner_label} more solid defensively")
+            
+            # H2H insight - only if it supports prediction
+            if predicted_winner == "home" and h2h_home_rate > h2h_away_rate:
+                insights.append(f"{winner_label} has historical advantage ({h2h_home_rate:.0%} win rate)")
+            elif predicted_winner == "away" and h2h_away_rate > h2h_home_rate:
+                insights.append(f"{winner_label} has historical advantage ({h2h_away_rate:.0%} win rate)")
+            
+            # Add prediction statement
+            win_prob = home_win_prob if predicted_winner == "home" else away_win_prob
+            insights.append(f"🏆 AI predicts {winner_label} victory at {'home' if predicted_winner == 'home' else 'away'}")
+            insights.append(f"📊 Win probability: {win_prob:.0%}")
+            
+            # Confidence level
+            if win_prob > 0.7:
+                insights.append(f"{winner_label} heavily favored to win")
+            elif win_prob > 0.5:
+                insights.append(f"{winner_label} slight edge in this matchup")
+        else:
+            # Draw prediction
+            insights.append(f"Evenly matched teams")
+            insights.append(f"📊 Draw probability: {draw_prob:.0%}")
             insights.append(f"Both teams showing competitive form")
+        
+        # Ensure we always have at least 3 insights
+        if len(insights) < 3:
             insights.append(f"Expect a closely contested match")
+            insights.append(f"Form and statistics suggest tight game")
         
         return insights[:6]  # Return top 6 insights
     
