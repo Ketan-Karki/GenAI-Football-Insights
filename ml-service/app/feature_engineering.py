@@ -278,6 +278,12 @@ class FeatureEngineer:
             'attack_strength_diff': home_form.get('goals_per_game', 0) - away_form.get('goals_per_game', 0),
             'defense_strength_diff': away_form.get('conceded_per_game', 0) - home_form.get('conceded_per_game', 0),
             'player_quality_diff': home_players.get('avg_goals_per_match', 0) - away_players.get('avg_goals_per_match', 0),
+            
+            # Overall team strength (season-long performance)
+            'home_overall_strength': home_form.get('form_score', 0.5) * home_form.get('goals_per_game', 1.0),
+            'away_overall_strength': away_form.get('form_score', 0.5) * away_form.get('goals_per_game', 1.0),
+            'strength_ratio': (home_form.get('form_score', 0.5) * home_form.get('goals_per_game', 1.0)) / 
+                            max((away_form.get('form_score', 0.5) * away_form.get('goals_per_game', 1.0)), 0.1),
         }
         
         return pd.DataFrame([features])

@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -227,9 +226,6 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 		prediction["keyPlayers"] = keyPlayers
 	}
 
-	// Add ball knowledge insights using raw ML response (includes team_stats)
-	prediction["ballKnowledge"] = generateBallKnowledge(matchData, mlResponse)
-
 	// Add team-specific prediction winner
 	predictedOutcome, _ := prediction["predictedOutcome"].(string)
 	// homeTeamName and awayTeamName already declared above
@@ -260,78 +256,4 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, prediction)
-}
-
-func generateBallKnowledge(matchData map[string]interface{}, ml map[string]interface{}) []string {
-	insights := []string{}
-
-	homeTeam := matchData["homeTeam"].(map[string]interface{})
-	awayTeam := matchData["awayTeam"].(map[string]interface{})
-	homeTeamName := homeTeam["name"].(string)
-	awayTeamName := awayTeam["name"].(string)
-
-	homeWinProb, _ := ml["home_win_probability"].(float64)
-	awayWinProb, _ := ml["away_win_probability"].(float64)
-	drawProb, _ := ml["draw_probability"].(float64)
-	confidence, _ := ml["confidence_score"].(float64)
-
-	// Optional team_stats block
-	var homeForm, awayForm, homeGoals, awayGoals float64
-	if tsRaw, ok := ml["team_stats"].(map[string]interface{}); ok {
-		if v, ok := tsRaw["home_form"].(float64); ok {
-			homeForm = v
-		}
-		if v, ok := tsRaw["away_form"].(float64); ok {
-			awayForm = v
-		}
-		if v, ok := tsRaw["home_goals_avg"].(float64); ok {
-			homeGoals = v
-		}
-		if v, ok := tsRaw["away_goals_avg"].(float64); ok {
-			awayGoals = v
-		}
-	}
-
-	// Main prediction with context
-	predictedOutcome, _ := ml["predicted_outcome"].(string)
-	if predictedOutcome == "HOME_WIN" {
-		insights = append(insights, fmt.Sprintf("🏆 AI predicts %s victory at home", homeTeamName))
-		insights = append(insights, fmt.Sprintf("📊 Win probability: %.0f%%", homeWinProb*100))
-	} else if predictedOutcome == "AWAY_WIN" {
-		insights = append(insights, fmt.Sprintf("🏆 AI predicts %s to win away", awayTeamName))
-		insights = append(insights, fmt.Sprintf("📊 Win probability: %.0f%%", awayWinProb*100))
-	} else if predictedOutcome == "DRAW" {
-		insights = append(insights, "🤝 AI expects a draw - both teams rated closely")
-		insights = append(insights, fmt.Sprintf("📊 Draw probability: %.0f%%", drawProb*100))
-	}
-
-	// Dominant team
-	if homeWinProb > 0.6 {
-		insights = append(insights, fmt.Sprintf("%s heavily favored to win", homeTeamName))
-	} else if awayWinProb > 0.6 {
-		insights = append(insights, fmt.Sprintf("%s heavily favored to win", awayTeamName))
-	}
-
-	// Form-based insight (only if we have stats)
-	if homeForm > 0 && awayForm > 0 {
-		insights = append(insights,
-			fmt.Sprintf("📈 Recent form: %s %.0f%% wins vs %s %.0f%%", homeTeamName, homeForm*100, awayTeamName, awayForm*100))
-	}
-
-	// Goals-based insight
-	if homeGoals > 0 && awayGoals > 0 {
-		insights = append(insights,
-			fmt.Sprintf("⚽ Goals per game: %s %.1f vs %s %.1f", homeTeamName, homeGoals, awayTeamName, awayGoals))
-	}
-
-	// Confidence interpretation
-	if confidence >= 0.7 {
-		insights = append(insights, "✅ High confidence prediction from historical data")
-	} else if confidence >= 0.55 {
-		insights = append(insights, "� Medium confidence - data leans towards this result")
-	} else {
-		insights = append(insights, "⚠️ Low confidence - model sees this as a close matchup")
-	}
-
-	return insights
 }
