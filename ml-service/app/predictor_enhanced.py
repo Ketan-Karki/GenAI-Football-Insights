@@ -176,12 +176,8 @@ class EnhancedMatchPredictor:
             elif predicted_winner == "away" and h2h_away_rate > h2h_home_rate:
                 insights.append(f"{winner_label} has historical advantage ({h2h_away_rate:.0%} win rate)")
             
-            # Add prediction statement
+            # Confidence level based on win probability
             win_prob = home_win_prob if predicted_winner == "home" else away_win_prob
-            insights.append(f"🏆 AI predicts {winner_label} victory at {'home' if predicted_winner == 'home' else 'away'}")
-            insights.append(f"📊 Win probability: {win_prob:.0%}")
-            
-            # Confidence level
             if win_prob > 0.7:
                 insights.append(f"{winner_label} heavily favored to win")
             elif win_prob > 0.5:

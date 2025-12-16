@@ -19,6 +19,59 @@ class FeatureEngineer:
     def get_db_connection(self):
         return psycopg2.connect(self.db_url)
     
+    def get_team_quality_rating(self, team_external_id: int, before_date: str) -> float:
+        """
+        Calculate team quality rating based on season performance.
+        Returns a rating from 0-100 based on win rate, goals, and competition level.
+        """
+        conn = self.get_db_connection()
+        
+        query = """
+            SELECT 
+                COUNT(*) as total_matches,
+                SUM(CASE 
+                    WHEN (m.home_team_id = t.id AND m.winner = 'HOME_TEAM') OR 
+                         (m.away_team_id = t.id AND m.winner = 'AWAY_TEAM') 
+                    THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN m.winner = 'DRAW' THEN 1 ELSE 0 END) as draws,
+                AVG(CASE 
+                    WHEN m.home_team_id = t.id THEN m.home_score 
+                    ELSE m.away_score 
+                END) as avg_goals_scored,
+                AVG(CASE 
+                    WHEN m.home_team_id = t.id THEN m.away_score 
+                    ELSE m.home_score 
+                END) as avg_goals_conceded
+            FROM teams t
+            JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+            WHERE t.external_id = %s
+              AND m.status = 'FINISHED'
+              AND m.utc_date < %s
+              AND m.utc_date > (DATE %s - INTERVAL '365 days')
+              AND m.home_score IS NOT NULL
+        """
+        
+        df = pd.read_sql(query, conn, params=(team_external_id, before_date, before_date))
+        conn.close()
+        
+        if len(df) == 0 or df.iloc[0]['total_matches'] == 0:
+            return 50.0  # Default neutral rating
+        
+        row = df.iloc[0]
+        total = row['total_matches']
+        
+        # Calculate win rate (0-100)
+        win_rate = (row['wins'] / total) * 100 if total > 0 else 50
+        
+        # Calculate goal difference per game (normalize to 0-100)
+        goal_diff = (row['avg_goals_scored'] - row['avg_goals_conceded']) if row['avg_goals_scored'] else 0
+        goal_score = min(100, max(0, 50 + (goal_diff * 10)))
+        
+        # Weighted combination: 60% win rate, 40% goal performance
+        quality_rating = (win_rate * 0.6) + (goal_score * 0.4)
+        
+        return round(quality_rating, 2)
+    
     def get_team_recent_form(self, team_external_id: int, before_date: str, n_matches: int = 5) -> Dict:
         """
         Calculate team's recent form from last N matches before a given date.
@@ -232,6 +285,10 @@ class FeatureEngineer:
         Extract all features for a single match prediction.
         This is used both for training (on historical data) and prediction (on future matches).
         """
+        # Get team quality ratings (season-long performance)
+        home_quality = self.get_team_quality_rating(home_team_id, match_date)
+        away_quality = self.get_team_quality_rating(away_team_id, match_date)
+        
         # Get team form
         home_form = self.get_team_recent_form(home_team_id, match_date, n_matches=10)
         away_form = self.get_team_recent_form(away_team_id, match_date, n_matches=10)
@@ -248,6 +305,11 @@ class FeatureEngineer:
             # Match context
             'matchday': matchday,
             'is_home': 1,
+            
+            # Team quality ratings (most important - absolute team strength)
+            'home_quality_rating': home_quality,
+            'away_quality_rating': away_quality,
+            'quality_difference': home_quality - away_quality,
             
             # Team form features
             'home_form_score': home_form.get('form_score', 0.5),

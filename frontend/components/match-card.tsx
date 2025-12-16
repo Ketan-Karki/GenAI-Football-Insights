@@ -362,9 +362,6 @@ export function MatchCard({ match }: MatchCardProps) {
                       {prediction.insights &&
                         prediction.insights.length > 0 && (
                           <div className="space-y-2">
-                            <p className="text-xs font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wide flex items-center gap-1">
-                              🤖 ML Insights
-                            </p>
                             {prediction.insights.map((insight, idx) => (
                               <div
                                 key={idx}

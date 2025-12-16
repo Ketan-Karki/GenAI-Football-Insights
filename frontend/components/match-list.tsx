@@ -122,11 +122,9 @@ export function MatchList() {
       )}
 
       {!loading && !error && matches.length > 0 && (
-        <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {matches.slice(0, 12).map((match) => (
-            <div key={match.id} className="break-inside-avoid mb-4">
-              <MatchCard match={match} />
-            </div>
+            <MatchCard key={match.id} match={match} />
           ))}
         </div>
       )}
