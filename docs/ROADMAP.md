@@ -364,8 +364,8 @@ frontend/
   - Transformer models for news analysis (BERT fine-tuning)
   - Reinforcement learning for dynamic odds optimization
 - [ ] Fantasy football integration (player recommendations)
-- [ ] Betting odds comparison (affiliate partnerships)
 - [ ] Community features (user predictions, leaderboards)
+- [ ] Match statistics visualization (interactive charts)
 - [ ] Video analysis (CNN for tactical insights - future R&D)
 
 ### Phase 3: Enterprise & B2B (Year 2+)
@@ -540,12 +540,12 @@ frontend/
 
 ### Business Risks
 
-| Risk                    | Impact | Mitigation                                |
-| ----------------------- | ------ | ----------------------------------------- |
-| Low user adoption       | High   | SEO, content marketing, free tier         |
-| High churn rate         | Medium | User feedback, feature improvements       |
-| Legal issues (gambling) | High   | Clear disclaimers, no betting integration |
-| Competition             | Medium | Unique GenAI insights, superior UX        |
+| Risk                   | Impact | Mitigation                                |
+| ---------------------- | ------ | ----------------------------------------- |
+| Low user adoption      | High   | SEO, content marketing, free tier         |
+| High churn rate        | Medium | User feedback, feature improvements       |
+| Data accuracy concerns | High   | Clear disclaimers, show confidence scores |
+| Competition            | Medium | Unique AI insights, superior UX           |
 
 ---
 

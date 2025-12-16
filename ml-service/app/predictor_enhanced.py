@@ -72,9 +72,16 @@ class EnhancedMatchPredictor:
             probabilities = self.model.predict_proba(X)[0]
             predicted_class = self.model.predict(X)[0]
             
-            # Map to outcome labels
-            outcome_map = {0: 'AWAY_WIN', 1: 'DRAW', 2: 'HOME_WIN'}
-            predicted_outcome = outcome_map[predicted_class]
+            # Determine which specific team is predicted to win (team-specific outcome)
+            if predicted_class == 2:  # HOME_WIN
+                predicted_outcome = f"{home_team_name} Win" if home_team_name else "Home Team Win"
+                predicted_winner_team = home_team_name if home_team_name else "Home Team"
+            elif predicted_class == 0:  # AWAY_WIN
+                predicted_outcome = f"{away_team_name} Win" if away_team_name else "Away Team Win"
+                predicted_winner_team = away_team_name if away_team_name else "Away Team"
+            else:  # DRAW
+                predicted_outcome = "Draw"
+                predicted_winner_team = "Draw"
             
             # Calculate confidence based on prediction certainty
             # Use entropy-based confidence: low entropy = high confidence
@@ -101,9 +108,10 @@ class EnhancedMatchPredictor:
                 'home_win_probability': round(float(probabilities[2]), 3),
                 'draw_probability': round(float(probabilities[1]), 3),
                 'away_win_probability': round(float(probabilities[0]), 3),
-                'predicted_outcome': predicted_outcome,
+                'predicted_outcome': predicted_outcome,  # Team-specific: "Manchester City Win"
+                'predicted_winner': predicted_winner_team,  # Just team name: "Manchester City"
                 'confidence_score': round(float(confidence), 3),
-                'model_version': f"{self.metadata['model_type']}-v2.0-enhanced",
+                'model_version': f"{self.metadata['model_type']}-v2.0-enhanced-team-aware",
                 'model_accuracy': round(self.metadata['accuracy'], 3),
                 'insights': insights if insights else [],
                 'key_features': self._get_key_features(features_dict)

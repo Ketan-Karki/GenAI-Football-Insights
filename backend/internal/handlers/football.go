@@ -226,22 +226,8 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 		prediction["keyPlayers"] = keyPlayers
 	}
 
-	// Add team-specific prediction winner
-	predictedOutcome, _ := prediction["predictedOutcome"].(string)
-	// homeTeamName and awayTeamName already declared above
-
-	var predictedWinner string
-	switch predictedOutcome {
-	case "HOME_WIN":
-		predictedWinner = homeTeamName
-	case "AWAY_WIN":
-		predictedWinner = awayTeamName
-	case "DRAW":
-		predictedWinner = "Draw"
-	default:
-		predictedWinner = predictedOutcome
-	}
-	prediction["predictedWinner"] = predictedWinner
+	// ML service already provides team-specific predicted_winner
+	// Just add team names for reference
 	prediction["homeTeam"] = homeTeamName
 	prediction["awayTeam"] = awayTeamName
 

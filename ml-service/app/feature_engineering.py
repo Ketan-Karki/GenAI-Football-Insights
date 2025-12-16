@@ -19,6 +19,14 @@ class FeatureEngineer:
     def get_db_connection(self):
         return psycopg2.connect(self.db_url)
     
+    def get_all_teams(self) -> List[int]:
+        """Get list of all team external IDs in database for encoding"""
+        conn = self.get_db_connection()
+        query = "SELECT DISTINCT external_id FROM teams ORDER BY external_id"
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return df['external_id'].tolist()
+    
     def get_team_quality_rating(self, team_external_id: int, before_date: str) -> float:
         """
         Calculate team quality rating based on season performance.
@@ -305,6 +313,11 @@ class FeatureEngineer:
             # Match context
             'matchday': matchday,
             'is_home': 1,
+            
+            # Team identity features (NEW - makes model team-aware)
+            'home_team_id': home_team_id,
+            'away_team_id': away_team_id,
+            'team_id_diff': home_team_id - away_team_id,  # Interaction feature
             
             # Team quality ratings (most important - absolute team strength)
             'home_quality_rating': home_quality,
