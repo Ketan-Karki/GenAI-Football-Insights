@@ -1,195 +1,191 @@
+"""
+Enhanced ML training script with player statistics and advanced features.
+This trains a model on HISTORICAL data to predict FUTURE match outcomes.
+"""
+
 import os
-import psycopg2
+import joblib
 import pandas as pd
 import numpy as np
-from datetime import datetime
-import joblib
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import xgboost as xgb
-from dotenv import load_dotenv
+from feature_engineering import FeatureEngineer
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Load environment variables
-load_dotenv('../.env')
-
-# Database connection
-def get_db_connection():
-    db_url = os.getenv('DATABASE_URL')
-    if not db_url:
-        raise ValueError("DATABASE_URL not set in environment")
-    return psycopg2.connect(db_url)
-
-# Feature engineering
-def extract_features(df):
-    """Extract features from match data for ML model"""
-    features = pd.DataFrame()
+def train_enhanced_model():
+    """Train ML model with enhanced features including player statistics"""
     
-    # Basic features
-    features['home_team_id'] = df['home_team_id']
-    features['away_team_id'] = df['away_team_id']
-    features['matchday'] = df['matchday']
+    print("=" * 60)
+    print("🚀 ENHANCED ML MODEL TRAINING")
+    print("=" * 60)
+    print("\n📊 Using historical match data + player statistics")
+    print("🎯 Goal: Predict future match outcomes\n")
     
-    # Calculate team form (last 5 matches)
-    features['home_form'] = df.groupby('home_team_id')['home_win'].transform(
-        lambda x: x.rolling(5, min_periods=1).mean()
-    )
-    features['away_form'] = df.groupby('away_team_id')['away_win'].transform(
-        lambda x: x.rolling(5, min_periods=1).mean()
-    )
+    # Initialize feature engineer
+    engineer = FeatureEngineer()
     
-    # Goals scored/conceded averages
-    features['home_goals_avg'] = df.groupby('home_team_id')['home_score'].transform(
-        lambda x: x.rolling(5, min_periods=1).mean()
-    )
-    features['away_goals_avg'] = df.groupby('away_team_id')['away_score'].transform(
-        lambda x: x.rolling(5, min_periods=1).mean()
-    )
-    features['home_conceded_avg'] = df.groupby('home_team_id')['away_score'].transform(
-        lambda x: x.rolling(5, min_periods=1).mean()
-    )
-    features['away_conceded_avg'] = df.groupby('away_team_id')['home_score'].transform(
-        lambda x: x.rolling(5, min_periods=1).mean()
-    )
+    # Extract features from all historical matches
+    print("🔧 Step 1: Feature Engineering")
+    print("-" * 60)
+    X, y = engineer.extract_training_features()
     
-    # Home advantage indicator
-    features['is_home'] = 1
-    
-    return features
-
-# Load and prepare data
-def load_training_data():
-    """Load finished matches from database"""
-    conn = get_db_connection()
-    
-    query = """
-        SELECT 
-            m.id,
-            m.home_team_id,
-            m.away_team_id,
-            m.matchday,
-            m.home_score,
-            m.away_score,
-            m.winner,
-            m.utc_date,
-            ht.name as home_team_name,
-            at.name as away_team_name
-        FROM matches m
-        JOIN teams ht ON m.home_team_id = ht.id
-        JOIN teams at ON m.away_team_id = at.id
-        WHERE m.status = 'FINISHED'
-          AND m.home_score IS NOT NULL
-          AND m.away_score IS NOT NULL
-        ORDER BY m.utc_date
-    """
-    
-    df = pd.read_sql(query, conn)
-    conn.close()
-    
-    print(f"📊 Loaded {len(df)} finished matches")
-    
-    # Create target variable
-    df['home_win'] = (df['winner'] == 'HOME_TEAM').astype(int)
-    df['away_win'] = (df['winner'] == 'AWAY_TEAM').astype(int)
-    df['draw'] = (df['winner'].isna() | (df['winner'] == 'DRAW')).astype(int)
-    
-    # Create outcome label (0=away_win, 1=draw, 2=home_win)
-    df['outcome'] = df.apply(lambda x: 2 if x['home_win'] else (0 if x['away_win'] else 1), axis=1)
-    
-    return df
-
-# Train model
-def train_model():
-    """Train ML model on historical match data"""
-    print("🚀 Starting ML model training...")
-    
-    # Load data
-    df = load_training_data()
-    
-    if len(df) < 100:
-        print("❌ Not enough data to train model (need at least 100 matches)")
-        return
-    
-    # Extract features
-    print("🔧 Engineering features...")
-    X = extract_features(df)
-    y = df['outcome']
-    
-    # Remove rows with NaN (first few matches won't have form data)
+    # Remove any rows with NaN values
+    print(f"\n🧹 Cleaning data...")
     mask = ~X.isna().any(axis=1)
     X = X[mask]
     y = y[mask]
     
-    print(f"✅ Features extracted: {X.shape}")
-    print(f"   - Home wins: {(y == 2).sum()}")
-    print(f"   - Draws: {(y == 1).sum()}")
-    print(f"   - Away wins: {(y == 0).sum()}")
+    print(f"✅ Clean dataset: {X.shape[0]} samples, {X.shape[1]} features")
+    print(f"\n📈 Class distribution:")
+    print(f"   - Home wins: {(y == 2).sum()} ({(y == 2).sum() / len(y) * 100:.1f}%)")
+    print(f"   - Draws: {(y == 1).sum()} ({(y == 1).sum() / len(y) * 100:.1f}%)")
+    print(f"   - Away wins: {(y == 0).sum()} ({(y == 0).sum() / len(y) * 100:.1f}%)")
     
-    # Split data
+    # Split data (80/20 train/test)
+    print(f"\n📊 Step 2: Train/Test Split")
+    print("-" * 60)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
+    print(f"✅ Training set: {len(X_train)} samples")
+    print(f"✅ Test set: {len(X_test)} samples")
     
-    # Train Random Forest
-    print("\n🌲 Training Random Forest...")
-    rf_model = RandomForestClassifier(
-        n_estimators=100,
-        max_depth=10,
-        min_samples_split=10,
-        random_state=42,
-        n_jobs=-1
-    )
-    rf_model.fit(X_train, y_train)
+    # Train multiple models
+    print(f"\n🤖 Step 3: Model Training")
+    print("-" * 60)
     
-    # Train XGBoost
-    print("🚀 Training XGBoost...")
-    xgb_model = xgb.XGBClassifier(
-        n_estimators=100,
-        max_depth=6,
-        learning_rate=0.1,
-        random_state=42,
-        n_jobs=-1
-    )
-    xgb_model.fit(X_train, y_train)
+    models = {
+        'Random Forest': RandomForestClassifier(
+            n_estimators=200,
+            max_depth=15,
+            min_samples_split=10,
+            min_samples_leaf=5,
+            random_state=42,
+            n_jobs=-1
+        ),
+        'Gradient Boosting': GradientBoostingClassifier(
+            n_estimators=150,
+            max_depth=8,
+            learning_rate=0.1,
+            random_state=42
+        )
+    }
     
-    # Evaluate models
-    print("\n📈 Evaluating models...")
+    results = {}
     
-    rf_pred = rf_model.predict(X_test)
-    xgb_pred = xgb_model.predict(X_test)
+    for name, model in models.items():
+        print(f"\n🔄 Training {name}...")
+        model.fit(X_train, y_train)
+        
+        # Predictions
+        y_pred = model.predict(X_test)
+        y_pred_proba = model.predict_proba(X_test)
+        
+        # Accuracy
+        acc = accuracy_score(y_test, y_pred)
+        
+        # Cross-validation score
+        cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy')
+        
+        results[name] = {
+            'model': model,
+            'accuracy': acc,
+            'cv_mean': cv_scores.mean(),
+            'cv_std': cv_scores.std(),
+            'predictions': y_pred
+        }
+        
+        print(f"   ✅ Test Accuracy: {acc:.2%}")
+        print(f"   ✅ CV Accuracy: {cv_scores.mean():.2%} (+/- {cv_scores.std():.2%})")
     
-    rf_acc = accuracy_score(y_test, rf_pred)
-    xgb_acc = accuracy_score(y_test, xgb_pred)
+    # Select best model
+    best_model_name = max(results, key=lambda x: results[x]['accuracy'])
+    best_model = results[best_model_name]['model']
+    best_acc = results[best_model_name]['accuracy']
     
-    print(f"\n✅ Random Forest Accuracy: {rf_acc:.2%}")
-    print(f"✅ XGBoost Accuracy: {xgb_acc:.2%}")
+    print(f"\n🏆 Step 4: Best Model Selection")
+    print("-" * 60)
+    print(f"✅ Winner: {best_model_name}")
+    print(f"✅ Test Accuracy: {best_acc:.2%}")
+    print(f"✅ CV Accuracy: {results[best_model_name]['cv_mean']:.2%}")
     
-    # Use best model
-    best_model = xgb_model if xgb_acc > rf_acc else rf_model
-    best_name = "XGBoost" if xgb_acc > rf_acc else "Random Forest"
-    best_acc = max(rf_acc, xgb_acc)
+    # Feature importance
+    print(f"\n📊 Step 5: Feature Importance Analysis")
+    print("-" * 60)
     
-    print(f"\n🏆 Best model: {best_name} ({best_acc:.2%})")
+    if hasattr(best_model, 'feature_importances_'):
+        feature_importance = pd.DataFrame({
+            'feature': X.columns,
+            'importance': best_model.feature_importances_
+        }).sort_values('importance', ascending=False)
+        
+        print("\n🔝 Top 10 Most Important Features:")
+        for idx, row in feature_importance.head(10).iterrows():
+            print(f"   {row['feature']:30s} {row['importance']:.4f}")
+        
+        # Save feature importance
+        feature_importance.to_csv('models/feature_importance.csv', index=False)
+    
+    # Detailed classification report
+    print(f"\n📋 Step 6: Detailed Performance Report")
+    print("-" * 60)
+    print(classification_report(
+        y_test, 
+        results[best_model_name]['predictions'],
+        target_names=['Away Win', 'Draw', 'Home Win'],
+        digits=3
+    ))
+    
+    # Confusion matrix
+    cm = confusion_matrix(y_test, results[best_model_name]['predictions'])
+    print("\n📊 Confusion Matrix:")
+    print("                Predicted")
+    print("              Away  Draw  Home")
+    print(f"Actual Away   {cm[0][0]:4d}  {cm[0][1]:4d}  {cm[0][2]:4d}")
+    print(f"       Draw   {cm[1][0]:4d}  {cm[1][1]:4d}  {cm[1][2]:4d}")
+    print(f"       Home   {cm[2][0]:4d}  {cm[2][1]:4d}  {cm[2][2]:4d}")
     
     # Save model
-    model_path = 'models/match_predictor.pkl'
+    print(f"\n💾 Step 7: Saving Model")
+    print("-" * 60)
+    
     os.makedirs('models', exist_ok=True)
+    
+    model_path = 'models/match_predictor_enhanced.pkl'
     joblib.dump(best_model, model_path)
+    print(f"✅ Model saved: {model_path}")
     
-    # Save feature names
-    feature_names = X.columns.tolist()
-    joblib.dump(feature_names, 'models/feature_names.pkl')
+    feature_names_path = 'models/feature_names_enhanced.pkl'
+    joblib.dump(X.columns.tolist(), feature_names_path)
+    print(f"✅ Features saved: {feature_names_path}")
     
-    print(f"\n💾 Model saved to {model_path}")
-    print(f"💾 Feature names saved")
+    # Save metadata
+    metadata = {
+        'model_type': best_model_name,
+        'accuracy': best_acc,
+        'cv_accuracy': results[best_model_name]['cv_mean'],
+        'n_features': len(X.columns),
+        'n_training_samples': len(X_train),
+        'n_test_samples': len(X_test),
+        'feature_names': X.columns.tolist()
+    }
+    joblib.dump(metadata, 'models/model_metadata.pkl')
+    print(f"✅ Metadata saved: models/model_metadata.pkl")
     
-    # Print classification report
-    print("\n📊 Detailed Classification Report:")
-    print(classification_report(y_test, xgb_pred if xgb_acc > rf_acc else rf_pred,
-                                target_names=['Away Win', 'Draw', 'Home Win']))
+    print("\n" + "=" * 60)
+    print("🎉 TRAINING COMPLETE!")
+    print("=" * 60)
+    print(f"\n✅ Model: {best_model_name}")
+    print(f"✅ Accuracy: {best_acc:.2%}")
+    print(f"✅ Features: {len(X.columns)} (including player statistics)")
+    print(f"✅ Training samples: {len(X_train)}")
+    print(f"\n🚀 Ready to predict future matches!")
+    print("=" * 60)
     
-    print("\n🎉 Training complete!")
-    return best_acc
+    return best_model, best_acc, metadata
 
 if __name__ == "__main__":
-    train_model()
+    train_enhanced_model()

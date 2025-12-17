@@ -5,14 +5,8 @@ from typing import Optional, List
 import uvicorn
 from dotenv import load_dotenv
 
-# Use enhanced predictor with player statistics
-try:
-    from app.predictor_enhanced import predictor
-    print("✅ Using enhanced ML predictor with player statistics")
-except Exception as e:
-    print(f"⚠️  Enhanced predictor import failed: {e}")
-    from app.predictor import predictor
-    print("⚠️  Falling back to basic predictor")
+from app.predictor import predictor
+print("✅ Using team-aware ML predictor")
 
 # Load environment variables
 load_dotenv("../.env")

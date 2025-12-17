@@ -60,7 +60,7 @@ jobs:
             if [ "${{ steps.ml_changes.outputs.ml_changed }}" = "true" ]; then
               echo "🤖 ML service changes detected - retraining model..."
               export DATABASE_URL="postgresql://ketan:postgres@localhost:5432/football_db?sslmode=disable"
-              python app/train_enhanced.py
+              python app/train.py
               echo "✅ Model retrained successfully"
             else
               echo "⏭️  No ML service changes - skipping retraining"
