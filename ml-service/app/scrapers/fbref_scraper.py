@@ -80,24 +80,50 @@ class FBrefScraper:
             return pd.DataFrame()
         
         url = f"{self.BASE_URL}{league_url}"
+        print(f"Fetching: {url}")
         soup = self._get_page(url)
         if not soup:
             return pd.DataFrame()
         
-        # Find the stats table
-        table = soup.find('table', {'id': 'stats_squads_standard'})
+        # Try multiple table IDs that FBref might use
+        table_ids = [
+            'stats_squads_standard',
+            'stats_squads_standard_for',
+            'results',
+            'stats_standard'
+        ]
+        
+        table = None
+        for table_id in table_ids:
+            table = soup.find('table', {'id': table_id})
+            if table:
+                print(f"Found table with ID: {table_id}")
+                break
+        
+        # If no table found by ID, try finding any table with class 'stats_table'
+        if not table:
+            table = soup.find('table', {'class': 'stats_table'})
+            if table:
+                print("Found table by class 'stats_table'")
+        
         if not table:
             print("Could not find stats table")
+            print(f"Available tables: {[t.get('id') for t in soup.find_all('table') if t.get('id')]}")
             return pd.DataFrame()
         
-        # Parse table
-        df = pd.read_html(str(table))[0]
-        
-        # Clean column names (FBref has multi-level columns)
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = ['_'.join(col).strip() for col in df.columns.values]
-        
-        return df
+        try:
+            # Parse table
+            df = pd.read_html(str(table))[0]
+            
+            # Clean column names (FBref has multi-level columns)
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = ['_'.join(col).strip() for col in df.columns.values]
+            
+            print(f"Successfully parsed table with {len(df)} rows")
+            return df
+        except Exception as e:
+            print(f"Error parsing table: {e}")
+            return pd.DataFrame()
     
     def get_team_xg_data(self, team_url: str) -> Dict:
         """
