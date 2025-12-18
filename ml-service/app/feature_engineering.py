@@ -1,16 +1,22 @@
+"""
+Team-Agnostic Feature Engineering
+Extracts 31 features for ANY team in ANY match context - no home/away bias.
+"""
+
 import psycopg2
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple, Optional
+from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 
-load_dotenv('../.env')
+load_dotenv()
 
-class FeatureEngineer:
+class TeamAgnosticFeatureEngineer:
     """
-    Advanced feature engineering for football match prediction.
-    Uses historical match data and player statistics to create predictive features.
+    Extracts features for team-agnostic prediction.
+    Treats all teams equally - venue is just a small feature, not a fundamental split.
     """
     
     def __init__(self):
@@ -19,19 +25,84 @@ class FeatureEngineer:
     def get_db_connection(self):
         return psycopg2.connect(self.db_url)
     
-    def get_all_teams(self) -> List[int]:
-        """Get list of all team external IDs in database for encoding"""
-        conn = self.get_db_connection()
-        query = "SELECT DISTINCT external_id FROM teams ORDER BY external_id"
-        df = pd.read_sql(query, conn)
-        conn.close()
-        return df['external_id'].tolist()
+    def extract_features_for_team(self, team_id: int, opponent_id: int, 
+                                  match_date: str, is_at_venue: bool) -> Dict:
+        """
+        Extract 31 features for a team attacking an opponent.
+        Completely symmetric - no home/away bias.
+        
+        Args:
+            team_id: The attacking team's external_id
+            opponent_id: The defending team's external_id
+            match_date: Match date for temporal features
+            is_at_venue: True if team is at their venue (small boost)
+        
+        Returns:
+            Dict with 31 features
+        """
+        features = {}
+        
+        # 1. Team Quality Rating (0-100 based on season performance)
+        team_quality = self._get_team_quality_rating(team_id, match_date)
+        features['team_quality_rating'] = team_quality
+        
+        # 2. Opponent Defensive Quality
+        opponent_quality = self._get_team_quality_rating(opponent_id, match_date)
+        features['opponent_quality_rating'] = opponent_quality
+        
+        # 3-10. Attacking Team Features (xG, goals, shots)
+        team_attack = self._get_team_attacking_stats(team_id, match_date)
+        features['team_xg_per_game'] = team_attack.get('xg_per_game', 1.5)
+        features['team_goals_per_game'] = team_attack.get('goals_per_game', 1.5)
+        features['team_shots_per_game'] = team_attack.get('shots_per_game', 12)
+        features['team_striker_xg'] = team_attack.get('top_striker_xg', 0.5)
+        features['team_playmaker_assists'] = team_attack.get('playmaker_assists', 3)
+        features['team_formation_attack'] = team_attack.get('formation_attack_score', 5)
+        features['team_pressing_intensity'] = team_attack.get('pressing_intensity', 5)
+        features['team_possession_avg'] = team_attack.get('possession_avg', 50)
+        
+        # 11-16. Defending Team Features
+        opponent_defense = self._get_team_defensive_stats(opponent_id, match_date)
+        features['opponent_xg_conceded'] = opponent_defense.get('xg_conceded_per_game', 1.5)
+        features['opponent_goals_conceded'] = opponent_defense.get('goals_conceded_per_game', 1.5)
+        features['opponent_defensive_rating'] = opponent_defense.get('defensive_rating', 5)
+        features['opponent_goalkeeper_save_pct'] = opponent_defense.get('goalkeeper_save_pct', 0.7)
+        features['opponent_tackles_per_game'] = opponent_defense.get('tackles_per_game', 15)
+        features['opponent_formation_defense'] = opponent_defense.get('formation_defense_score', 5)
+        
+        # 17-20. Match Context
+        features['venue_factor'] = 1.0 if is_at_venue else 0.85  # Small boost for home venue
+        features['rest_days'] = self._calculate_rest_days(team_id, match_date)
+        features['travel_distance'] = 0 if is_at_venue else self._estimate_travel_distance(team_id, opponent_id)
+        features['injury_impact'] = self._calculate_injury_impact(team_id, match_date)
+        
+        # 21-23. Head-to-Head (team-specific, not position-specific)
+        h2h = self._get_head_to_head_stats(team_id, opponent_id, match_date)
+        features['h2h_goals_scored_avg'] = h2h.get('goals_scored_avg', 1.5)
+        features['h2h_goals_conceded_avg'] = h2h.get('goals_conceded_avg', 1.5)
+        features['h2h_win_rate'] = h2h.get('win_rate', 0.5)
+        
+        # 24-27. Form and Momentum
+        form = self._get_team_form(team_id, match_date)
+        features['team_form_last_5'] = form.get('form_last_5', 0.5)
+        features['team_form_last_10'] = form.get('form_last_10', 0.5)
+        features['team_momentum'] = form.get('momentum', 0)
+        
+        opponent_form = self._get_team_form(opponent_id, match_date)
+        features['opponent_form_last_5'] = opponent_form.get('form_last_5', 0.5)
+        
+        # 28-29. Tactical
+        features['coach_win_rate'] = self._get_coach_win_rate(team_id, match_date)
+        features['tactical_matchup_score'] = self._calculate_tactical_matchup(team_id, opponent_id, match_date)
+        
+        # 30-31. Quality Difference (derived features)
+        features['quality_difference'] = team_quality - opponent_quality
+        features['attack_vs_defense'] = features['team_xg_per_game'] - features['opponent_xg_conceded']
+        
+        return features
     
-    def get_team_quality_rating(self, team_external_id: int, before_date: str) -> float:
-        """
-        Calculate team quality rating based on season performance.
-        Returns a rating from 0-100 based on win rate, goals, and competition level.
-        """
+    def _get_team_quality_rating(self, team_id: int, before_date: str) -> float:
+        """Calculate team quality rating (0-100) based on season performance"""
         conn = self.get_db_connection()
         
         query = """
@@ -41,7 +112,6 @@ class FeatureEngineer:
                     WHEN (m.home_team_id = t.id AND m.winner = 'HOME_TEAM') OR 
                          (m.away_team_id = t.id AND m.winner = 'AWAY_TEAM') 
                     THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN m.winner = 'DRAW' THEN 1 ELSE 0 END) as draws,
                 AVG(CASE 
                     WHEN m.home_team_id = t.id THEN m.home_score 
                     ELSE m.away_score 
@@ -59,7 +129,7 @@ class FeatureEngineer:
               AND m.home_score IS NOT NULL
         """
         
-        df = pd.read_sql(query, conn, params=(team_external_id, before_date, before_date))
+        df = pd.read_sql(query, conn, params=(team_id, before_date, before_date))
         conn.close()
         
         if len(df) == 0 or df.iloc[0]['total_matches'] == 0:
@@ -68,10 +138,10 @@ class FeatureEngineer:
         row = df.iloc[0]
         total = row['total_matches']
         
-        # Calculate win rate (0-100)
+        # Win rate component (0-100)
         win_rate = (row['wins'] / total) * 100 if total > 0 else 50
         
-        # Calculate goal difference per game (normalize to 0-100)
+        # Goal difference component (normalized to 0-100)
         goal_diff = (row['avg_goals_scored'] - row['avg_goals_conceded']) if row['avg_goals_scored'] else 0
         goal_score = min(100, max(0, 50 + (goal_diff * 10)))
         
@@ -80,354 +150,294 @@ class FeatureEngineer:
         
         return round(quality_rating, 2)
     
-    def get_team_recent_form(self, team_external_id: int, before_date: str, n_matches: int = 5) -> Dict:
-        """
-        Calculate team's recent form from last N matches before a given date.
-        Uses external_id (from API) to identify teams.
-        Returns: wins, draws, losses, goals_for, goals_against, points
-        """
+    def _get_team_attacking_stats(self, team_id: int, before_date: str) -> Dict:
+        """Get team's attacking statistics"""
         conn = self.get_db_connection()
         
-        query = """
+        # Try to get from team_tactics table first (if populated)
+        query_tactics = """
+            SELECT xg_per_game, avg_shots_per_game, avg_possession, pressing_intensity
+            FROM team_tactics
+            WHERE team_id = (SELECT id FROM teams WHERE external_id = %s)
+              AND season = '2024'
+            LIMIT 1
+        """
+        
+        df_tactics = pd.read_sql(query_tactics, conn, params=(team_id,))
+        
+        # Fallback to calculating from matches
+        query_matches = """
             SELECT 
-                m.home_score,
-                m.away_score,
-                m.winner,
-                ht.external_id as home_team_ext_id,
-                at.external_id as away_team_ext_id
-            FROM matches m
-            JOIN teams ht ON m.home_team_id = ht.id
-            JOIN teams at ON m.away_team_id = at.id
-            WHERE (ht.external_id = %s OR at.external_id = %s)
-              AND m.status = 'FINISHED'
-              AND m.utc_date < %s
-              AND m.home_score IS NOT NULL
-            ORDER BY m.utc_date DESC
-            LIMIT %s
-        """
-        
-        df = pd.read_sql(query, conn, params=(team_external_id, team_external_id, before_date, n_matches))
-        conn.close()
-        
-        if len(df) == 0:
-            return {
-                'wins': 0, 'draws': 0, 'losses': 0,
-                'goals_for': 0, 'goals_against': 0,
-                'points': 0, 'form_score': 0.5,
-                'goals_per_game': 0,
-                'conceded_per_game': 0,
-                'matches_played': 0
-            }
-        
-        wins = draws = losses = 0
-        goals_for = goals_against = 0
-        
-        for _, match in df.iterrows():
-            is_home = match['home_team_ext_id'] == team_external_id
-            
-            if is_home:
-                goals_for += match['home_score']
-                goals_against += match['away_score']
-            else:
-                goals_for += match['away_score']
-                goals_against += match['home_score']
-            
-            if match['winner'] == 'HOME_TEAM' and is_home:
-                wins += 1
-            elif match['winner'] == 'AWAY_TEAM' and not is_home:
-                wins += 1
-            elif match['winner'] == 'DRAW' or pd.isna(match['winner']):
-                draws += 1
-            else:
-                losses += 1
-        
-        points = wins * 3 + draws
-        form_score = points / (len(df) * 3) if len(df) > 0 else 0.5
-        
-        goals_pg = goals_for / len(df) if len(df) > 0 else 0
-        conceded_pg = goals_against / len(df) if len(df) > 0 else 0
-        
-        return {
-            'wins': wins,
-            'draws': draws,
-            'losses': losses,
-            'goals_for': goals_for,
-            'goals_against': goals_against,
-            'points': points,
-            'form_score': form_score,
-            'goals_per_game': goals_pg,
-            'conceded_per_game': conceded_pg,
-            'matches_played': len(df)
-        }
-    
-    def get_player_features(self, team_external_id: int, before_date: str, n_matches: int = 5) -> Dict:
-        """
-        Get aggregated player statistics for a team from recent matches.
-        Uses external_id (from API) to identify teams.
-        Returns: avg goals per match, avg assists per match, top scorer form
-        """
-        conn = self.get_db_connection()
-        
-        query = """
-            SELECT 
-                SUM(pms.goals) as total_goals,
-                SUM(pms.assists) as total_assists,
-                COUNT(DISTINCT pms.match_id) as matches_with_data,
-                MAX(pms.goals) as max_goals_in_match,
-                COUNT(DISTINCT pms.player_id) as active_players
-            FROM player_match_stats pms
-            JOIN players p ON pms.player_id = p.id
-            JOIN teams t ON p.team_id = t.id
-            JOIN matches m ON pms.match_id = m.id
+                AVG(CASE WHEN m.home_team_id = t.id THEN m.home_score ELSE m.away_score END) as goals_per_game,
+                COUNT(*) as matches
+            FROM teams t
+            JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
             WHERE t.external_id = %s
-              AND m.utc_date < %s
               AND m.status = 'FINISHED'
-              AND pms.match_id IN (
-                  SELECT m2.id FROM matches m2
-                  WHERE m2.status = 'FINISHED'
-                    AND m2.utc_date < %s
-                  ORDER BY m2.utc_date DESC
-                  LIMIT %s
-              )
+              AND m.utc_date < %s
+              AND m.utc_date > (DATE %s - INTERVAL '180 days')
+              AND m.home_score IS NOT NULL
         """
         
-        df = pd.read_sql(query, conn, params=(team_external_id, before_date, before_date, n_matches * 20))
+        df_matches = pd.read_sql(query_matches, conn, params=(team_id, before_date, before_date))
         conn.close()
         
-        if len(df) == 0 or df.iloc[0]['matches_with_data'] == 0:
-            return {
-                'avg_goals_per_match': 0,
-                'avg_assists_per_match': 0,
-                'top_scorer_form': 0,
-                'squad_depth': 0
-            }
-        
-        row = df.iloc[0]
-        matches = max(row['matches_with_data'], 1)
-        
-        return {
-            'avg_goals_per_match': row['total_goals'] / matches if matches > 0 else 0,
-            'avg_assists_per_match': row['total_assists'] / matches if matches > 0 else 0,
-            'top_scorer_form': row['max_goals_in_match'] if row['max_goals_in_match'] else 0,
-            'squad_depth': row['active_players'] if row['active_players'] else 0
+        stats = {
+            'xg_per_game': df_tactics.iloc[0]['xg_per_game'] if len(df_tactics) > 0 else 1.5,
+            'goals_per_game': df_matches.iloc[0]['goals_per_game'] if len(df_matches) > 0 else 1.5,
+            'shots_per_game': df_tactics.iloc[0]['avg_shots_per_game'] if len(df_tactics) > 0 else 12,
+            'possession_avg': df_tactics.iloc[0]['avg_possession'] if len(df_tactics) > 0 else 50,
+            'pressing_intensity': df_tactics.iloc[0]['pressing_intensity'] if len(df_tactics) > 0 else 5,
+            'top_striker_xg': 0.5,  # TODO: Get from player_match_stats_enhanced
+            'playmaker_assists': 3,  # TODO: Get from player_match_stats_enhanced
+            'formation_attack_score': 5,  # TODO: Calculate from formation
         }
+        
+        return stats
     
-    def get_head_to_head(self, home_team_ext_id: int, away_team_ext_id: int, 
-                         before_date: str, n_matches: int = 5) -> Dict:
-        """
-        Get head-to-head record between two teams.
-        Uses external_id (from API) to identify teams.
-        Returns: home wins, away wins, draws, avg goals
-        """
+    def _get_team_defensive_stats(self, team_id: int, before_date: str) -> Dict:
+        """Get team's defensive statistics"""
         conn = self.get_db_connection()
         
         query = """
             SELECT 
-                m.home_score, m.away_score, m.winner,
-                ht.external_id as home_team_ext_id,
-                at.external_id as away_team_ext_id
-            FROM matches m
-            JOIN teams ht ON m.home_team_id = ht.id
-            JOIN teams at ON m.away_team_id = at.id
-            WHERE ((ht.external_id = %s AND at.external_id = %s)
-                OR (ht.external_id = %s AND at.external_id = %s))
+                AVG(CASE WHEN m.home_team_id = t.id THEN m.away_score ELSE m.home_score END) as goals_conceded_per_game,
+                COUNT(*) as matches
+            FROM teams t
+            JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+            WHERE t.external_id = %s
+              AND m.status = 'FINISHED'
+              AND m.utc_date < %s
+              AND m.utc_date > (DATE %s - INTERVAL '180 days')
+              AND m.home_score IS NOT NULL
+        """
+        
+        df = pd.read_sql(query, conn, params=(team_id, before_date, before_date))
+        conn.close()
+        
+        stats = {
+            'xg_conceded_per_game': 1.5,  # TODO: Get from team_tactics
+            'goals_conceded_per_game': df.iloc[0]['goals_conceded_per_game'] if len(df) > 0 else 1.5,
+            'defensive_rating': 5,  # TODO: Calculate from team_tactics
+            'goalkeeper_save_pct': 0.7,  # TODO: Get from player stats
+            'tackles_per_game': 15,  # TODO: Get from team_tactics
+            'formation_defense_score': 5,  # TODO: Calculate from formation
+        }
+        
+        return stats
+    
+    def _calculate_rest_days(self, team_id: int, match_date: str) -> int:
+        """Calculate days since last match"""
+        conn = self.get_db_connection()
+        
+        query = """
+            SELECT MAX(m.utc_date) as last_match_date
+            FROM teams t
+            JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+            WHERE t.external_id = %s
+              AND m.status = 'FINISHED'
+              AND m.utc_date < %s
+        """
+        
+        df = pd.read_sql(query, conn, params=(team_id, match_date))
+        conn.close()
+        
+        if len(df) > 0 and df.iloc[0]['last_match_date']:
+            last_match = pd.to_datetime(df.iloc[0]['last_match_date'])
+            current_match = pd.to_datetime(match_date)
+            rest_days = (current_match - last_match).days
+            return min(rest_days, 14)  # Cap at 14 days
+        
+        return 7  # Default
+    
+    def _estimate_travel_distance(self, team_id: int, opponent_id: int) -> float:
+        """Estimate travel distance (simplified - returns 0 for same country, 200 for different)"""
+        # TODO: Implement proper distance calculation based on team locations
+        return 200.0  # Default assumption for away matches
+    
+    def _calculate_injury_impact(self, team_id: int, match_date: str) -> float:
+        """Calculate impact of injuries on team strength"""
+        conn = self.get_db_connection()
+        
+        query = """
+            SELECT COUNT(*) as injured_count
+            FROM player_availability pa
+            JOIN players p ON pa.player_id = p.id
+            JOIN teams t ON p.team_id = t.id
+            WHERE t.external_id = %s
+              AND pa.unavailable_from <= %s
+              AND (pa.unavailable_until IS NULL OR pa.unavailable_until >= %s)
+              AND pa.reason IN ('injury', 'suspension')
+        """
+        
+        df = pd.read_sql(query, conn, params=(team_id, match_date, match_date))
+        conn.close()
+        
+        injured_count = df.iloc[0]['injured_count'] if len(df) > 0 else 0
+        
+        # Each injury reduces strength by 0.05, cap at -0.3
+        return -min(0.3, injured_count * 0.05)
+    
+    def _get_head_to_head_stats(self, team_id: int, opponent_id: int, before_date: str) -> Dict:
+        """Get head-to-head statistics between two teams"""
+        conn = self.get_db_connection()
+        
+        query = """
+            SELECT 
+                AVG(CASE WHEN m.home_team_id = t1.id THEN m.home_score ELSE m.away_score END) as goals_scored_avg,
+                AVG(CASE WHEN m.home_team_id = t1.id THEN m.away_score ELSE m.home_score END) as goals_conceded_avg,
+                SUM(CASE 
+                    WHEN (m.home_team_id = t1.id AND m.winner = 'HOME_TEAM') OR 
+                         (m.away_team_id = t1.id AND m.winner = 'AWAY_TEAM') 
+                    THEN 1 ELSE 0 END)::float / COUNT(*)::float as win_rate
+            FROM teams t1
+            JOIN teams t2 ON t2.external_id = %s
+            JOIN matches m ON (
+                (m.home_team_id = t1.id AND m.away_team_id = t2.id) OR
+                (m.away_team_id = t1.id AND m.home_team_id = t2.id)
+            )
+            WHERE t1.external_id = %s
+              AND m.status = 'FINISHED'
+              AND m.utc_date < %s
+              AND m.utc_date > (DATE %s - INTERVAL '730 days')
+        """
+        
+        df = pd.read_sql(query, conn, params=(opponent_id, team_id, before_date, before_date))
+        conn.close()
+        
+        if len(df) > 0 and df.iloc[0]['goals_scored_avg'] is not None:
+            return {
+                'goals_scored_avg': float(df.iloc[0]['goals_scored_avg']),
+                'goals_conceded_avg': float(df.iloc[0]['goals_conceded_avg']),
+                'win_rate': float(df.iloc[0]['win_rate']) if df.iloc[0]['win_rate'] else 0.5
+            }
+        
+        return {'goals_scored_avg': 1.5, 'goals_conceded_avg': 1.5, 'win_rate': 0.5}
+    
+    def _get_team_form(self, team_id: int, before_date: str) -> Dict:
+        """Get team's recent form"""
+        conn = self.get_db_connection()
+        
+        # Last 5 matches
+        query_5 = """
+            SELECT 
+                SUM(CASE 
+                    WHEN (m.home_team_id = t.id AND m.winner = 'HOME_TEAM') OR 
+                         (m.away_team_id = t.id AND m.winner = 'AWAY_TEAM') 
+                    THEN 3
+                    WHEN m.winner = 'DRAW' THEN 1
+                    ELSE 0 END)::float / (COUNT(*) * 3)::float as form_score
+            FROM teams t
+            JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+            WHERE t.external_id = %s
               AND m.status = 'FINISHED'
               AND m.utc_date < %s
             ORDER BY m.utc_date DESC
-            LIMIT %s
+            LIMIT 5
         """
         
-        df = pd.read_sql(query, conn, params=(
-            home_team_ext_id, away_team_ext_id,
-            away_team_ext_id, home_team_ext_id,
-            before_date, n_matches
-        ))
+        df_5 = pd.read_sql(query_5, conn, params=(team_id, before_date))
+        
+        # Last 10 matches
+        query_10 = """
+            SELECT 
+                SUM(CASE 
+                    WHEN (m.home_team_id = t.id AND m.winner = 'HOME_TEAM') OR 
+                         (m.away_team_id = t.id AND m.winner = 'AWAY_TEAM') 
+                    THEN 3
+                    WHEN m.winner = 'DRAW' THEN 1
+                    ELSE 0 END)::float / (COUNT(*) * 3)::float as form_score
+            FROM teams t
+            JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+            WHERE t.external_id = %s
+              AND m.status = 'FINISHED'
+              AND m.utc_date < %s
+            ORDER BY m.utc_date DESC
+            LIMIT 10
+        """
+        
+        df_10 = pd.read_sql(query_10, conn, params=(team_id, before_date))
         conn.close()
         
-        if len(df) == 0:
-            return {
-                'h2h_home_wins': 0,
-                'h2h_draws': 0,
-                'h2h_away_wins': 0,
-                'h2h_home_goals_avg': 0,
-                'h2h_away_goals_avg': 0,
-                'h2h_matches': 0
-            }
+        form_5 = df_5.iloc[0]['form_score'] if len(df_5) > 0 and df_5.iloc[0]['form_score'] else 0.5
+        form_10 = df_10.iloc[0]['form_score'] if len(df_10) > 0 and df_10.iloc[0]['form_score'] else 0.5
         
-        h2h_home_wins = h2h_away_wins = h2h_draws = 0
-        h2h_home_goals = h2h_away_goals = 0
-        
-        for _, match in df.iterrows():
-            # From perspective of current home team
-            if match['home_team_ext_id'] == home_team_ext_id:
-                h2h_home_goals += match['home_score']
-                h2h_away_goals += match['away_score']
-                if match['winner'] == 'HOME_TEAM':
-                    h2h_home_wins += 1
-                elif match['winner'] == 'AWAY_TEAM':
-                    h2h_away_wins += 1
-                else:
-                    h2h_draws += 1
-            else:
-                h2h_home_goals += match['away_score']
-                h2h_away_goals += match['home_score']
-                if match['winner'] == 'AWAY_TEAM':
-                    h2h_home_wins += 1
-                elif match['winner'] == 'HOME_TEAM':
-                    h2h_away_wins += 1
-                else:
-                    h2h_draws += 1
+        # Momentum: difference between recent and medium-term form
+        momentum = form_5 - form_10
         
         return {
-            'h2h_home_wins': h2h_home_wins,
-            'h2h_draws': h2h_draws,
-            'h2h_away_wins': h2h_away_wins,
-            'h2h_home_goals_avg': h2h_home_goals / len(df) if len(df) > 0 else 0,
-            'h2h_away_goals_avg': h2h_away_goals / len(df) if len(df) > 0 else 0,
-            'h2h_matches': len(df)
+            'form_last_5': float(form_5),
+            'form_last_10': float(form_10),
+            'momentum': float(momentum)
         }
     
-    def extract_match_features(self, home_team_id: int, away_team_id: int, 
-                               match_date: str, matchday: int = 1) -> pd.DataFrame:
-        """
-        Extract all features for a single match prediction.
-        This is used both for training (on historical data) and prediction (on future matches).
-        """
-        # Get team quality ratings (season-long performance)
-        home_quality = self.get_team_quality_rating(home_team_id, match_date)
-        away_quality = self.get_team_quality_rating(away_team_id, match_date)
-        
-        # Get team form
-        home_form = self.get_team_recent_form(home_team_id, match_date, n_matches=10)
-        away_form = self.get_team_recent_form(away_team_id, match_date, n_matches=10)
-        
-        # Get player statistics
-        home_players = self.get_player_features(home_team_id, match_date, n_matches=5)
-        away_players = self.get_player_features(away_team_id, match_date, n_matches=5)
-        
-        # Get head-to-head
-        h2h = self.get_head_to_head(home_team_id, away_team_id, match_date, n_matches=5)
-        
-        # Compile features
-        features = {
-            # Match context
-            'matchday': matchday,
-            'is_home': 1,
-            
-            # Team identity features (NEW - makes model team-aware)
-            'home_team_id': home_team_id,
-            'away_team_id': away_team_id,
-            'team_id_diff': home_team_id - away_team_id,  # Interaction feature
-            
-            # Team quality ratings (most important - absolute team strength)
-            'home_quality_rating': home_quality,
-            'away_quality_rating': away_quality,
-            'quality_difference': home_quality - away_quality,
-            
-            # Team form features
-            'home_form_score': home_form.get('form_score', 0.5),
-            'away_form_score': away_form.get('form_score', 0.5),
-            'home_wins_recent': home_form.get('wins', 0),
-            'away_wins_recent': away_form.get('wins', 0),
-            'home_goals_per_game': home_form.get('goals_per_game', 0),
-            'away_goals_per_game': away_form.get('goals_per_game', 0),
-            'home_conceded_per_game': home_form.get('conceded_per_game', 0),
-            'away_conceded_per_game': away_form.get('conceded_per_game', 0),
-            
-            # Player-based features
-            'home_player_goals_avg': home_players.get('avg_goals_per_match', 0),
-            'away_player_goals_avg': away_players.get('avg_goals_per_match', 0),
-            'home_player_assists_avg': home_players.get('avg_assists_per_match', 0),
-            'away_player_assists_avg': away_players.get('avg_assists_per_match', 0),
-            'home_top_scorer_form': home_players.get('top_scorer_form', 0),
-            'away_top_scorer_form': away_players.get('top_scorer_form', 0),
-            
-            # Head-to-head features
-            'h2h_home_win_rate': h2h.get('h2h_home_wins', 0) / max(h2h.get('h2h_matches', 1), 1),
-            'h2h_away_win_rate': h2h.get('h2h_away_wins', 0) / max(h2h.get('h2h_matches', 1), 1),
-            'h2h_home_goals_avg': h2h.get('h2h_home_goals_avg', 0),
-            'h2h_away_goals_avg': h2h.get('h2h_away_goals_avg', 0),
-            
-            # Derived features
-            'form_difference': home_form.get('form_score', 0.5) - away_form.get('form_score', 0.5),
-            'attack_strength_diff': home_form.get('goals_per_game', 0) - away_form.get('goals_per_game', 0),
-            'defense_strength_diff': away_form.get('conceded_per_game', 0) - home_form.get('conceded_per_game', 0),
-            'player_quality_diff': home_players.get('avg_goals_per_match', 0) - away_players.get('avg_goals_per_match', 0),
-            
-            # Overall team strength (season-long performance)
-            'home_overall_strength': home_form.get('form_score', 0.5) * home_form.get('goals_per_game', 1.0),
-            'away_overall_strength': away_form.get('form_score', 0.5) * away_form.get('goals_per_game', 1.0),
-            'strength_ratio': (home_form.get('form_score', 0.5) * home_form.get('goals_per_game', 1.0)) / 
-                            max((away_form.get('form_score', 0.5) * away_form.get('goals_per_game', 1.0)), 0.1),
-        }
-        
-        return pd.DataFrame([features])
-    
-    def extract_training_features(self) -> Tuple[pd.DataFrame, pd.Series]:
-        """
-        Extract features for all historical matches for model training.
-        Returns: (X, y) where X is features and y is outcome labels
-        """
+    def _get_coach_win_rate(self, team_id: int, before_date: str) -> float:
+        """Get coach's win rate"""
         conn = self.get_db_connection()
         
-        # Get all finished matches
         query = """
             SELECT 
-                m.id,
-                m.home_team_id,
-                m.away_team_id,
-                m.matchday,
-                m.utc_date,
-                m.winner,
-                m.home_score,
-                m.away_score
-            FROM matches m
-            WHERE m.status = 'FINISHED'
-              AND m.home_score IS NOT NULL
-              AND m.away_score IS NOT NULL
-            ORDER BY m.utc_date
+                COALESCE(tc.wins::float / NULLIF(tc.matches_managed, 0)::float, 0.5) as win_rate
+            FROM team_coaches tc
+            JOIN teams t ON tc.team_id = t.id
+            WHERE t.external_id = %s
+              AND tc.season = '2024'
+            LIMIT 1
         """
         
-        matches_df = pd.read_sql(query, conn)
+        df = pd.read_sql(query, conn, params=(team_id,))
         conn.close()
         
-        print(f"📊 Processing {len(matches_df)} matches for feature extraction...")
+        if len(df) > 0:
+            return float(df.iloc[0]['win_rate'])
         
-        all_features = []
-        all_labels = []
+        return 0.5  # Default
+    
+    def _calculate_tactical_matchup(self, team_id: int, opponent_id: int, before_date: str) -> float:
+        """Calculate tactical matchup score (simplified)"""
+        # TODO: Implement formation-based tactical analysis
+        # For now, return neutral score
+        return 5.0
+    
+    def extract_match_features(self, team_a_id: int, team_b_id: int, 
+                               match_date: str) -> Tuple[Dict, Dict]:
+        """
+        Extract features for both teams in a match.
+        Returns: (team_a_features, team_b_features)
+        """
+        # Determine which team is at their venue (if applicable)
+        # For now, assume first team is at venue
+        team_a_features = self.extract_features_for_team(
+            team_id=team_a_id,
+            opponent_id=team_b_id,
+            match_date=match_date,
+            is_at_venue=True
+        )
         
-        for idx, match in matches_df.iterrows():
-            if idx % 100 == 0:
-                print(f"   Processed {idx}/{len(matches_df)} matches...")
-            
-            try:
-                # Extract features for this match
-                features = self.extract_match_features(
-                    match['home_team_id'],
-                    match['away_team_id'],
-                    match['utc_date'].strftime('%Y-%m-%d'),
-                    match['matchday']
-                )
-                
-                # Create label (0=away_win, 1=draw, 2=home_win)
-                if match['winner'] == 'HOME_TEAM':
-                    label = 2
-                elif match['winner'] == 'AWAY_TEAM':
-                    label = 0
-                else:
-                    label = 1
-                
-                all_features.append(features)
-                all_labels.append(label)
-                
-            except Exception as e:
-                print(f"   ⚠️  Error processing match {match['id']}: {e}")
-                continue
+        team_b_features = self.extract_features_for_team(
+            team_id=team_b_id,
+            opponent_id=team_a_id,
+            match_date=match_date,
+            is_at_venue=False
+        )
         
-        # Combine all features
-        X = pd.concat(all_features, ignore_index=True)
-        y = pd.Series(all_labels)
-        
-        print(f"✅ Feature extraction complete: {X.shape[0]} samples, {X.shape[1]} features")
-        
-        return X, y
+        return team_a_features, team_b_features
+
+
+# Example usage
+if __name__ == "__main__":
+    engineer = TeamAgnosticFeatureEngineer()
+    
+    # Test: Extract features for Man City vs Burnley
+    # Man City external_id: 65, Burnley: 73 (example IDs)
+    team_a_features, team_b_features = engineer.extract_match_features(
+        team_a_id=65,
+        team_b_id=73,
+        match_date='2025-01-15'
+    )
+    
+    print("Team A Features (31 total):")
+    for key, value in team_a_features.items():
+        print(f"  {key}: {value}")
+    
+    print(f"\nTotal features extracted: {len(team_a_features)}")
