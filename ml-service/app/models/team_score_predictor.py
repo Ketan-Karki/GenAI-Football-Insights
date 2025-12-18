@@ -5,6 +5,7 @@ Predicts goals for ANY team vs ANY opponent - no home/away bias.
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, regularizers
 from sklearn.preprocessing import StandardScaler
