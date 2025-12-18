@@ -320,20 +320,26 @@ class TeamAgnosticFeatureEngineer:
         
         # Last 5 matches
         query_5 = """
+            WITH recent_matches AS (
+                SELECT 
+                    CASE 
+                        WHEN (m.home_team_id = t.id AND m.winner = 'HOME_TEAM') OR 
+                             (m.away_team_id = t.id AND m.winner = 'AWAY_TEAM') 
+                        THEN 3
+                        WHEN m.winner = 'DRAW' THEN 1
+                        ELSE 0 
+                    END as points
+                FROM teams t
+                JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+                WHERE t.external_id = %s
+                  AND m.status = 'FINISHED'
+                  AND m.utc_date < %s
+                ORDER BY m.utc_date DESC
+                LIMIT 5
+            )
             SELECT 
-                SUM(CASE 
-                    WHEN (m.home_team_id = t.id AND m.winner = 'HOME_TEAM') OR 
-                         (m.away_team_id = t.id AND m.winner = 'AWAY_TEAM') 
-                    THEN 3
-                    WHEN m.winner = 'DRAW' THEN 1
-                    ELSE 0 END)::float / (COUNT(*) * 3)::float as form_score
-            FROM teams t
-            JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
-            WHERE t.external_id = %s
-              AND m.status = 'FINISHED'
-              AND m.utc_date < %s
-            ORDER BY m.utc_date DESC
-            LIMIT 5
+                COALESCE(SUM(points)::float / (COUNT(*) * 3)::float, 0.5) as form_score
+            FROM recent_matches
         """
         
         df_5 = pd.read_sql(query_5, conn, params=(team_id, before_date))
