@@ -123,6 +123,14 @@ func setupRouter(db *sql.DB, apiKey string) *gin.Engine {
 		v1.GET("/matches/:id", footballHandler.GetMatch)
 		v1.GET("/standings/:competition", footballHandler.GetStandings)
 		v1.GET("/predictions/:matchId", footballHandler.GetPrediction)
+
+		// Prediction history routes
+		v1.GET("/predictions/history", func(c *gin.Context) {
+			handlers.GetPredictionHistory(c, db)
+		})
+		v1.GET("/predictions/accuracy", func(c *gin.Context) {
+			handlers.GetPredictionAccuracy(c, db)
+		})
 	}
 
 	return router

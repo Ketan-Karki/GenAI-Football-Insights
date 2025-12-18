@@ -5,8 +5,13 @@ from typing import Optional, List
 import uvicorn
 from dotenv import load_dotenv
 
-from app.predictor import predictor
-print("✅ Using team-aware ML predictor")
+try:
+    from app.predictor_v2 import predictor
+    print("✅ Using team-agnostic neural network predictor")
+except Exception as e:
+    print(f"⚠️  Could not load team-agnostic predictor: {e}")
+    print("⚠️  Falling back to basic predictor")
+    from app.predictor import predictor
 
 # Load environment variables
 load_dotenv("../.env")
