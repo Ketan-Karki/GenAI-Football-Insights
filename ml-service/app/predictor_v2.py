@@ -72,6 +72,24 @@ class TeamAgnosticPredictor:
                 away_team_name=away_team_name
             )
             
+            # Calculate probabilities from score predictions for backward compatibility
+            goal_diff = result['team_a_predicted_goals'] - result['team_b_predicted_goals']
+            
+            # Convert goal difference to win probabilities
+            if goal_diff > 1.0:
+                home_prob = min(0.85, 0.5 + (goal_diff * 0.15))
+                away_prob = max(0.05, 0.5 - (goal_diff * 0.20))
+                draw_prob = 1.0 - home_prob - away_prob
+            elif goal_diff < -1.0:
+                away_prob = min(0.85, 0.5 + (abs(goal_diff) * 0.15))
+                home_prob = max(0.05, 0.5 - (abs(goal_diff) * 0.20))
+                draw_prob = 1.0 - home_prob - away_prob
+            else:
+                # Close match
+                home_prob = 0.5 + (goal_diff * 0.1)
+                away_prob = 0.5 - (goal_diff * 0.1)
+                draw_prob = max(0.2, 1.0 - home_prob - away_prob)
+            
             # Format response
             return {
                 'predicted_outcome': result['predicted_outcome'],
@@ -80,6 +98,9 @@ class TeamAgnosticPredictor:
                 'team_b_predicted_goals': result['team_b_predicted_goals'],
                 'confidence_score': result['confidence_score'],
                 'goal_difference': result['goal_difference'],
+                'home_win_probability': round(home_prob, 2),
+                'draw_probability': round(draw_prob, 2),
+                'away_win_probability': round(away_prob, 2),
                 'model_version': 'team-agnostic-v1.0-neural-network',
                 'insights': insights,
                 'key_features': {
@@ -153,9 +174,6 @@ class TeamAgnosticPredictor:
             'team_b_predicted_goals': 1.5,
             'confidence_score': 0.5,
             'goal_difference': 0.0,
-            'home_win_probability': 0.35,
-            'draw_probability': 0.30,
-            'away_win_probability': 0.35,
             'model_version': 'fallback-v1.0',
             'insights': ['Model unavailable - using fallback prediction'],
             'key_features': {}

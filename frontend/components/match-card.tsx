@@ -230,186 +230,166 @@ export function MatchCard({ match }: MatchCardProps) {
                 </p>
               </div>
             </div>
-            {prediction.ballKnowledge &&
-              prediction.ballKnowledge.length > 0 && (
-                <div className="mt-3">
-                  <ShimmerButton
-                    onClick={() => setShowBallKnowledge(!showBallKnowledge)}
-                    className="w-full font-semibold text-sm shadow-lg"
-                    aria-expanded={showBallKnowledge}
-                    aria-controls="ball-knowledge-content"
-                    background="linear-gradient(90deg, #f97316, #f59e0b)"
-                    shimmerDuration="2.5s"
+            {prediction.insights && prediction.insights.length > 0 && (
+              <div className="mt-3">
+                <ShimmerButton
+                  onClick={() => setShowBallKnowledge(!showBallKnowledge)}
+                  className="w-full font-semibold text-sm shadow-lg"
+                  aria-expanded={showBallKnowledge}
+                  aria-controls="ball-knowledge-content"
+                  background="linear-gradient(90deg, #f97316, #f59e0b)"
+                  shimmerDuration="2.5s"
+                >
+                  <span className="text-lg">⚽</span>
+                  <span className="mx-2">
+                    {showBallKnowledge ? "Hide" : "Show"} Ball Knowledge
+                  </span>
+                  <span
+                    className={`transition-transform duration-300 ${
+                      showBallKnowledge ? "rotate-180" : ""
+                    }`}
                   >
-                    <span className="text-lg">⚽</span>
-                    <span className="mx-2">
-                      {showBallKnowledge ? "Hide" : "Show"} Ball Knowledge
-                    </span>
-                    <span
-                      className={`transition-transform duration-300 ${
-                        showBallKnowledge ? "rotate-180" : ""
-                      }`}
-                    >
-                      ▼
-                    </span>
-                  </ShimmerButton>
+                    ▼
+                  </span>
+                </ShimmerButton>
 
-                  {showBallKnowledge && (
-                    <div
-                      id="ball-knowledge-content"
-                      className="mt-3 space-y-3 bg-[#2B3139] rounded-lg p-4 border border-border animate-in slide-in-from-top-2 duration-200"
-                      role="region"
-                      aria-label="Detailed match insights"
-                    >
-                      <p className="text-xs font-medium text-[#848E9C] uppercase tracking-wider flex items-center gap-2 mb-3">
-                        🧠 AI Insights
-                      </p>
+                {showBallKnowledge && (
+                  <div
+                    id="ball-knowledge-content"
+                    className="mt-3 space-y-3 bg-[#2B3139] rounded-lg p-4 border border-border animate-in slide-in-from-top-2 duration-200"
+                    role="region"
+                    aria-label="Detailed match insights"
+                  >
+                    <p className="text-xs font-medium text-[#848E9C] uppercase tracking-wider flex items-center gap-2">
+                      🧠 Ball Knowledge
+                    </p>
 
-                      <div className="space-y-2 mb-3">
-                        {prediction.insights.map((insight: string, idx: number) => (
+                    {prediction.teamStats && (
+                      <div
+                        className="grid grid-cols-2 gap-3 text-xs text-slate-800 dark:text-slate-100"
+                        role="group"
+                        aria-label="Team statistics"
+                      >
+                        <div className="bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
+                          <p className="font-semibold mb-1">Recent Form</p>
+                          <p>
+                            {match.homeTeam.shortName}:{" "}
+                            {(prediction.teamStats.homeForm * 100).toFixed(0)}%
+                            wins
+                          </p>
+                          <p>
+                            {match.awayTeam.shortName}:{" "}
+                            {(prediction.teamStats.awayForm * 100).toFixed(0)}%
+                            wins
+                          </p>
+                        </div>
+                        <div className="bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
+                          <p className="font-semibold mb-1">Goals / Game</p>
+                          <p>
+                            {match.homeTeam.shortName}:{" "}
+                            {prediction.teamStats.homeGoalsAvg.toFixed(1)}
+                          </p>
+                          <p>
+                            {match.awayTeam.shortName}:{" "}
+                            {prediction.teamStats.awayGoalsAvg.toFixed(1)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {prediction.headToHead && (
+                      <div className="text-[11px] text-slate-700 dark:text-slate-200 bg-white/50 dark:bg-slate-900/40 rounded-md p-2">
+                        <p className="font-semibold mb-1">
+                          Head-to-head (recent)
+                        </p>
+                        <p>
+                          {match.homeTeam.shortName}{" "}
+                          {prediction.headToHead.homeWins}W · Draws{" "}
+                          {prediction.headToHead.draws} ·{" "}
+                          {match.awayTeam.shortName}{" "}
+                          {prediction.headToHead.awayWins}W
+                        </p>
+                      </div>
+                    )}
+
+                    {prediction.keyPlayers &&
+                      (prediction.keyPlayers.home.length > 0 ||
+                        prediction.keyPlayers.away.length > 0) && (
+                        <div
+                          className="text-xs text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700"
+                          role="group"
+                          aria-label="Key players"
+                        >
+                          <p className="font-semibold mb-2">Key players</p>
+
+                          {prediction.keyPlayers.home.length > 0 && (
+                            <div className="mb-2">
+                              <p className="font-medium text-[10px] text-slate-500 dark:text-slate-400 mb-1">
+                                {match.homeTeam.shortName}
+                              </p>
+                              {prediction.keyPlayers.home.map((player, idx) => (
+                                <p key={idx} className="ml-2">
+                                  {player.name} ({player.position?.charAt(0)}) –{" "}
+                                  {player.goals} G, {player.assists} A
+                                </p>
+                              ))}
+                            </div>
+                          )}
+
+                          {prediction.keyPlayers.away.length > 0 && (
+                            <div>
+                              <p className="font-medium text-[10px] text-slate-500 dark:text-slate-400 mb-1">
+                                {match.awayTeam.shortName}
+                              </p>
+                              {prediction.keyPlayers.away.map((player, idx) => (
+                                <p key={idx} className="ml-2">
+                                  {player.name} ({player.position?.charAt(0)}) –{" "}
+                                  {player.goals} G, {player.assists} A
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                    {prediction.insights && prediction.insights.length > 0 && (
+                      <div className="space-y-2">
+                        {prediction.insights.map((insight, idx) => (
                           <div
                             key={idx}
-                            className="text-sm text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700"
+                            className="flex items-start gap-2 text-xs text-slate-800 dark:text-slate-200 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded-md p-3 border border-orange-100 dark:border-orange-900/50 hover:border-orange-300 dark:hover:border-orange-700 transition-colors"
+                            role="listitem"
                           >
-                            <span className="text-orange-500 font-bold mr-2">•</span>
-                            {insight}
+                            <span
+                              className="text-orange-600 dark:text-orange-400 font-bold text-sm"
+                              aria-hidden="true"
+                            >
+                              •
+                            </span>
+                            <span>{insight}</span>
                           </div>
                         ))}
                       </div>
+                    )}
 
-                      {prediction.teamStats && (
-                        <div
-                          className="grid grid-cols-2 gap-3 text-xs text-slate-800 dark:text-slate-100"
-                          role="group"
-                          aria-label="Team statistics"
-                        >
-                          <div className="bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
-                            <p className="font-semibold mb-1">Recent Form</p>
-                            <p>
-                              {match.homeTeam.shortName}:{" "}
-                              {(prediction.teamStats.homeForm * 100).toFixed(0)}
-                              % wins
-                            </p>
-                            <p>
-                              {match.awayTeam.shortName}:{" "}
-                              {(prediction.teamStats.awayForm * 100).toFixed(0)}
-                              % wins
-                            </p>
-                          </div>
-                          <div className="bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
-                            <p className="font-semibold mb-1">Goals / Game</p>
-                            <p>
-                              {match.homeTeam.shortName}:{" "}
-                              {prediction.teamStats.homeGoalsAvg.toFixed(1)}
-                            </p>
-                            <p>
-                              {match.awayTeam.shortName}:{" "}
-                              {prediction.teamStats.awayGoalsAvg.toFixed(1)}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {prediction.headToHead && (
-                        <div className="text-[11px] text-slate-700 dark:text-slate-200 bg-white/50 dark:bg-slate-900/40 rounded-md p-2">
-                          <p className="font-semibold mb-1">
-                            Head-to-head (recent)
-                          </p>
-                          <p>
-                            {match.homeTeam.shortName}{" "}
-                            {prediction.headToHead.homeWins}W · Draws{" "}
-                            {prediction.headToHead.draws} ·{" "}
-                            {match.awayTeam.shortName}{" "}
-                            {prediction.headToHead.awayWins}W
-                          </p>
-                        </div>
-                      )}
-
-                      {prediction.keyPlayers &&
-                        (prediction.keyPlayers.home.length > 0 ||
-                          prediction.keyPlayers.away.length > 0) && (
-                          <div
-                            className="text-xs text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700"
-                            role="group"
-                            aria-label="Key players"
-                          >
-                            <p className="font-semibold mb-2">Key players</p>
-
-                            {prediction.keyPlayers.home.length > 0 && (
-                              <div className="mb-2">
-                                <p className="font-medium text-[10px] text-slate-500 dark:text-slate-400 mb-1">
-                                  {match.homeTeam.shortName}
-                                </p>
-                                {prediction.keyPlayers.home.map(
-                                  (player, idx) => (
-                                    <p key={idx} className="ml-2">
-                                      {player.name} (
-                                      {player.position?.charAt(0)}) –{" "}
-                                      {player.goals} G, {player.assists} A
-                                    </p>
-                                  )
-                                )}
-                              </div>
-                            )}
-
-                            {prediction.keyPlayers.away.length > 0 && (
-                              <div>
-                                <p className="font-medium text-[10px] text-slate-500 dark:text-slate-400 mb-1">
-                                  {match.awayTeam.shortName}
-                                </p>
-                                {prediction.keyPlayers.away.map(
-                                  (player, idx) => (
-                                    <p key={idx} className="ml-2">
-                                      {player.name} (
-                                      {player.position?.charAt(0)}) –{" "}
-                                      {player.goals} G, {player.assists} A
-                                    </p>
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </div>
+                    {prediction.modelVersion && (
+                      <p
+                        className="text-xs text-slate-600 dark:text-slate-400 italic mt-2 pt-3 border-t border-orange-200 dark:border-orange-800"
+                        role="contentinfo"
+                      >
+                        Engine: {prediction.modelVersion}
+                        {prediction.modelAccuracy && (
+                          <span className="ml-2">
+                            • Accuracy:{" "}
+                            {(prediction.modelAccuracy * 100).toFixed(1)}%
+                          </span>
                         )}
-
-                      {prediction.insights &&
-                        prediction.insights.length > 0 && (
-                          <div className="space-y-2">
-                            {prediction.insights.map((insight, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-start gap-2 text-xs text-slate-800 dark:text-slate-200 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded-md p-3 border border-orange-100 dark:border-orange-900/50 hover:border-orange-300 dark:hover:border-orange-700 transition-colors"
-                                role="listitem"
-                              >
-                                <span
-                                  className="text-orange-600 dark:text-orange-400 font-bold text-sm"
-                                  aria-hidden="true"
-                                >
-                                  •
-                                </span>
-                                <span>{insight}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                      {prediction.modelVersion && (
-                        <p
-                          className="text-xs text-slate-600 dark:text-slate-400 italic mt-2 pt-3 border-t border-orange-200 dark:border-orange-800"
-                          role="contentinfo"
-                        >
-                          Engine: {prediction.modelVersion}
-                          {prediction.modelAccuracy && (
-                            <span className="ml-2">
-                              • Accuracy:{" "}
-                              {(prediction.modelAccuracy * 100).toFixed(1)}%
-                            </span>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
