@@ -153,6 +153,9 @@ class TeamAgnosticPredictor:
             'team_b_predicted_goals': 1.5,
             'confidence_score': 0.5,
             'goal_difference': 0.0,
+            'home_win_probability': 0.35,
+            'draw_probability': 0.30,
+            'away_win_probability': 0.35,
             'model_version': 'fallback-v1.0',
             'insights': ['Model unavailable - using fallback prediction'],
             'key_features': {}

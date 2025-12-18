@@ -261,9 +261,21 @@ export function MatchCard({ match }: MatchCardProps) {
                       role="region"
                       aria-label="Detailed match insights"
                     >
-                      <p className="text-xs font-medium text-[#848E9C] uppercase tracking-wider flex items-center gap-2">
-                        🧠 Ball Knowledge
+                      <p className="text-xs font-medium text-[#848E9C] uppercase tracking-wider flex items-center gap-2 mb-3">
+                        🧠 AI Insights
                       </p>
+
+                      <div className="space-y-2 mb-3">
+                        {prediction.insights.map((insight: string, idx: number) => (
+                          <div
+                            key={idx}
+                            className="text-sm text-slate-800 dark:text-slate-100 bg-white/80 dark:bg-slate-900/80 rounded-md p-3 border border-slate-200 dark:border-slate-700"
+                          >
+                            <span className="text-orange-500 font-bold mr-2">•</span>
+                            {insight}
+                          </div>
+                        ))}
+                      </div>
 
                       {prediction.teamStats && (
                         <div
