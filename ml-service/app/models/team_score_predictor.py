@@ -275,10 +275,21 @@ class TeamScorePredictor:
     def load(self):
         """Load trained model and scaler"""
         if os.path.exists(self.model_path) and os.path.exists(self.scaler_path):
-            self.model = keras.models.load_model(self.model_path)
-            self.scaler = joblib.load(self.scaler_path)
-            print(f"✅ Model loaded from {self.model_path}")
-            return True
+            try:
+                # Load with compile=False to avoid Keras version compatibility issues
+                self.model = tf.keras.models.load_model(self.model_path, compile=False)
+                # Recompile with current Keras version
+                self.model.compile(
+                    optimizer=keras.optimizers.Adam(learning_rate=0.001),
+                    loss='mse',
+                    metrics=['mae']
+                )
+                self.scaler = joblib.load(self.scaler_path)
+                print(f"✅ Model loaded from {self.model_path}")
+                return True
+            except Exception as e:
+                print(f"⚠️  Error loading model: {e}")
+                return False
         return False
     
     def evaluate(self, X_test: np.ndarray, y_test: np.ndarray) -> Dict:
