@@ -4,8 +4,8 @@ Replaces old position-based predictor with score prediction approach
 """
 
 import numpy as np
-from models.team_score_predictor import TeamScorePredictor
-from feature_engineering import TeamAgnosticFeatureEngineer
+from app.models.team_score_predictor import TeamScorePredictor
+from app.feature_engineering import TeamAgnosticFeatureEngineer
 from typing import Dict
 import os
 
