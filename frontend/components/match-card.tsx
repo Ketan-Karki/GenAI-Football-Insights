@@ -49,7 +49,8 @@ export function MatchCard({ match }: MatchCardProps) {
     }
 
     fetchPrediction();
-  }, [match.id, match.status, getCachedPrediction, cachePrediction]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.id, match.status]);
 
   const matchDate = new Date(match.utcDate);
   const isUpcoming = match.status === "SCHEDULED" || match.status === "TIMED";

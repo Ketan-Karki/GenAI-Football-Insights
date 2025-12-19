@@ -81,7 +81,8 @@ export function MatchList() {
     }
 
     fetchMatches();
-  }, [selectedCompetition, getMatches, cacheMatches]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCompetition]);
 
   return (
     <div className="space-y-6">
