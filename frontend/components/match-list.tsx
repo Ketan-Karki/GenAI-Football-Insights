@@ -68,6 +68,8 @@ export function MatchList() {
         );
 
         setMatches(upcomingMatches);
+        // Cache in context so we don't refetch on tab switch
+        cacheMatches(selectedCompetition, upcomingMatches);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch matches"
@@ -79,7 +81,7 @@ export function MatchList() {
     }
 
     fetchMatches();
-  }, [selectedCompetition]);
+  }, [selectedCompetition, getMatches, cacheMatches]);
 
   return (
     <div className="space-y-6">

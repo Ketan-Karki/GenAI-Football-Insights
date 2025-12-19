@@ -232,10 +232,10 @@ func GetPredictionAccuracy(c *gin.Context, db *sql.DB) {
 	query := `
 		SELECT 
 			COUNT(*) as total_predictions,
-			SUM(CASE WHEN prediction_correct = true THEN 1 ELSE 0 END) as correct_predictions,
-			AVG(goals_error_team_a) as avg_goals_error_a,
-			AVG(goals_error_team_b) as avg_goals_error_b,
-			AVG(confidence_score) as avg_confidence
+			COALESCE(SUM(CASE WHEN prediction_correct = true THEN 1 ELSE 0 END), 0) as correct_predictions,
+			COALESCE(AVG(goals_error_team_a), 0) as avg_goals_error_a,
+			COALESCE(AVG(goals_error_team_b), 0) as avg_goals_error_b,
+			COALESCE(AVG(confidence_score), 0) as avg_confidence
 		FROM prediction_history
 		WHERE actual_team_a_goals IS NOT NULL
 	`
