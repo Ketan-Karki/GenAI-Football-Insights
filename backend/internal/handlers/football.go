@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yourusername/football-prediction/internal/service"
@@ -194,12 +195,28 @@ func (h *FootballHandler) GetPrediction(c *gin.Context) {
 	}
 
 	// Convert snake_case to camelCase for frontend
+	predictedOutcome := mlResponse["predicted_outcome"].(string)
+
+	// Extract winner from predicted_outcome string
+	var predictedWinner string
+	if predictedOutcome == "Draw" {
+		predictedWinner = "Draw"
+	} else if strings.Contains(predictedOutcome, homeTeamName) {
+		predictedWinner = homeTeamName
+	} else if strings.Contains(predictedOutcome, awayTeamName) {
+		predictedWinner = awayTeamName
+	} else {
+		// Fallback: parse "Team Name Win" format
+		predictedWinner = strings.TrimSuffix(predictedOutcome, " Win")
+	}
+
 	prediction := gin.H{
 		"matchId":            matchID,
 		"homeWinProbability": mlResponse["home_win_probability"],
 		"drawProbability":    mlResponse["draw_probability"],
 		"awayWinProbability": mlResponse["away_win_probability"],
-		"predictedOutcome":   mlResponse["predicted_outcome"],
+		"predictedOutcome":   predictedOutcome,
+		"predictedWinner":    predictedWinner,
 		"confidenceScore":    mlResponse["confidence_score"],
 		"modelVersion":       mlResponse["model_version"],
 	}
