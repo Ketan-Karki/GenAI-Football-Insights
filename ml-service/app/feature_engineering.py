@@ -78,9 +78,9 @@ class TeamAgnosticFeatureEngineer:
         
         # 21-23. Head-to-Head (team-specific, not position-specific)
         h2h = self._get_head_to_head_stats(team_id, opponent_id, match_date)
-        features['h2h_goals_scored_avg'] = h2h.get('goals_scored_avg', 1.5)
-        features['h2h_goals_conceded_avg'] = h2h.get('goals_conceded_avg', 1.5)
-        features['h2h_win_rate'] = h2h.get('win_rate', 0.5)
+        features['h2h_goals_scored_avg'] = h2h.get('goals_scored_avg', 1.6)
+        features['h2h_goals_conceded_avg'] = h2h.get('goals_conceded_avg', 1.6)
+        features['h2h_win_rate'] = h2h.get('win_rate', 0.45)
         
         # 24-27. Form and Momentum
         form = self._get_team_form(team_id, match_date)
