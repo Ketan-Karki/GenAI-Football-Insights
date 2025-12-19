@@ -6,6 +6,7 @@ backend/*.so
 backend/*.dylib
 backend/tmp/
 backend/.env
+backend/football-api
 
 # Frontend (Next.js)
 frontend/.next/
