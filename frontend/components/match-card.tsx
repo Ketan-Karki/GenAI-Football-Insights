@@ -6,6 +6,7 @@ import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { api, type Match, type Prediction } from "@/lib/api";
 import { ShimmerButton } from "./ui/shimmer-button";
+import { useMatchContext } from "@/contexts/MatchContext";
 
 interface MatchCardProps {
   match: Match;

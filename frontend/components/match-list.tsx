@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, type Match } from "@/lib/api";
 import { MatchCard } from "./match-card";
 import { Button } from "./ui/button";
+import { useMatchContext } from "@/contexts/MatchContext";
 
 const COMPETITIONS = [
   { code: "PL", name: "Premier League", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
@@ -16,6 +17,7 @@ const COMPETITIONS = [
 ];
 
 export function MatchList() {
+  const { getMatches, setMatches: cacheMatches } = useMatchContext();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +28,15 @@ export function MatchList() {
       try {
         setLoading(true);
         setError(null);
+
+        // Check cache first
+        const cachedMatches = getMatches(selectedCompetition);
+        if (cachedMatches && cachedMatches.length > 0) {
+          setMatches(cachedMatches);
+          setLoading(false);
+          return;
+        }
+
         const data = await api.getMatches(selectedCompetition);
 
         // Filter for upcoming matches

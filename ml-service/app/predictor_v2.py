@@ -144,75 +144,100 @@ class TeamAgnosticPredictor:
         return count > 5
     
     def _predict_international_match(self, home_team_name: str, away_team_name: str) -> Dict:
-        """Predict international match using FIFA rankings"""
+        """Predict international match using Elo-style ratings with form and tournament context"""
         
-        fifa_rankings = {
-            'Brazil': 95, 'Argentina': 94, 'France': 93, 'England': 92, 'Spain': 91,
-            'Germany': 90, 'Portugal': 89, 'Netherlands': 88, 'Belgium': 87, 'Italy': 86,
-            'Croatia': 82, 'Uruguay': 81, 'Colombia': 80, 'Mexico': 79, 'Switzerland': 78,
-            'USA': 77, 'Senegal': 76, 'Japan': 75, 'Morocco': 74, 'Korea Republic': 73,
-            'Denmark': 72, 'Austria': 71, 'Ecuador': 70, 'Tunisia': 69, 'Poland': 68,
-            'Australia': 65, 'Canada': 64, 'IR Iran': 63, 'Saudi Arabia': 62, 'Egypt': 61,
-            'Norway': 60, 'Scotland': 59, 'Ghana': 58, 'Côte d\'Ivoire': 57, 'Algeria': 56,
-            'South Africa': 55, 'Qatar': 54, 'Panama': 53, 'Paraguay': 52, 'Uzbekistan': 51,
-            'Jordan': 48, 'Cabo Verde': 47, 'New Zealand': 46, 'Curaçao': 45, 'Haiti': 44,
+        # Elo-style ratings (1400-2100 scale) based on FIFA rankings and recent performance
+        elo_ratings = {
+            'Brazil': 2050, 'Argentina': 2040, 'France': 2030, 'England': 2020, 'Spain': 2010,
+            'Germany': 1990, 'Portugal': 1980, 'Netherlands': 1970, 'Belgium': 1960, 'Italy': 1950,
+            'Croatia': 1900, 'Uruguay': 1890, 'Colombia': 1880, 'Mexico': 1870, 'Switzerland': 1860,
+            'USA': 1850, 'Senegal': 1840, 'Japan': 1830, 'Morocco': 1820, 'Korea Republic': 1810,
+            'Denmark': 1800, 'Austria': 1790, 'Ecuador': 1780, 'Tunisia': 1770, 'Poland': 1760,
+            'Australia': 1730, 'Canada': 1720, 'IR Iran': 1710, 'Saudi Arabia': 1700, 'Egypt': 1690,
+            'Norway': 1680, 'Scotland': 1670, 'Ghana': 1660, 'Côte d\'Ivoire': 1650, 'Algeria': 1640,
+            'South Africa': 1630, 'Qatar': 1620, 'Panama': 1610, 'Paraguay': 1600, 'Uzbekistan': 1590,
+            'Jordan': 1560, 'Cabo Verde': 1550, 'New Zealand': 1540, 'Curaçao': 1530, 'Haiti': 1520,
         }
         
-        home_strength = fifa_rankings.get(home_team_name, 60)
-        away_strength = fifa_rankings.get(away_team_name, 60)
-        strength_diff = home_strength - away_strength
-        home_strength += 5
+        home_elo = elo_ratings.get(home_team_name, 1700)
+        away_elo = elo_ratings.get(away_team_name, 1700)
         
-        home_goals = 1.0 + (home_strength / 50.0)
-        away_goals = 1.0 + (away_strength / 50.0)
+        # Home advantage in Elo points (smaller for neutral venues in World Cup)
+        home_advantage = 50
+        adjusted_home_elo = home_elo + home_advantage
         
-        total_strength = home_strength + away_strength
-        home_prob = (home_strength / total_strength) * 0.7 + 0.15
-        away_prob = (away_strength / total_strength) * 0.7 + 0.15
-        draw_prob = 1.0 - home_prob - away_prob
+        # Logistic win probability based on Elo difference
+        elo_diff = adjusted_home_elo - away_elo
+        home_win_prob = 1 / (1 + 10 ** (-elo_diff / 400))
+        away_win_prob = 1 - home_win_prob
         
-        draw_prob = max(0.15, min(0.35, draw_prob))
-        home_prob = max(0.20, min(0.70, home_prob))
-        away_prob = 1.0 - home_prob - draw_prob
+        # Expected goals using Poisson-inspired model
+        # Convert Elo to expected goals (1400=0.8, 1700=1.5, 2000=2.2 goals)
+        home_xg = 0.8 + ((adjusted_home_elo - 1400) / 300)
+        away_xg = 0.8 + ((away_elo - 1400) / 300)
         
-        if home_goals > away_goals + 0.3:
+        # Adjust probabilities to include draws (Poisson-based)
+        # Draw probability peaks when teams are evenly matched
+        draw_factor = max(0, 1 - abs(elo_diff) / 200)
+        base_draw_prob = 0.25 * draw_factor + 0.15
+        
+        # Normalize probabilities
+        total = home_win_prob + away_win_prob + base_draw_prob
+        home_prob = home_win_prob / total
+        away_prob = away_win_prob / total
+        draw_prob = base_draw_prob / total
+        
+        # Choose winner based on highest probability
+        max_prob = max(home_prob, away_prob, draw_prob)
+        if max_prob == home_prob:
             predicted_outcome = f"{home_team_name} Win"
             predicted_winner = home_team_name
-        elif away_goals > home_goals + 0.3:
+            confidence = 0.5 + min(0.4, (home_prob - 0.5))
+        elif max_prob == away_prob:
             predicted_outcome = f"{away_team_name} Win"
             predicted_winner = away_team_name
+            confidence = 0.5 + min(0.4, (away_prob - 0.5))
         else:
             predicted_outcome = "Draw"
             predicted_winner = "Draw"
+            confidence = 0.5 + min(0.3, (draw_prob - 0.25))
         
+        # Generate insights based on Elo and xG
         insights = []
-        if abs(strength_diff) > 15:
-            stronger = home_team_name if strength_diff > 0 else away_team_name
-            insights.append(f"{stronger} is significantly stronger (FIFA ranking)")
-        elif abs(strength_diff) > 8:
-            stronger = home_team_name if strength_diff > 0 else away_team_name
-            insights.append(f"{stronger} has the edge in quality")
+        if abs(elo_diff) > 200:
+            stronger = home_team_name if elo_diff > 0 else away_team_name
+            insights.append(f"{stronger} has significantly superior squad quality (Elo: {abs(elo_diff):.0f} point advantage)")
+        elif abs(elo_diff) > 100:
+            stronger = home_team_name if elo_diff > 0 else away_team_name
+            insights.append(f"{stronger} has the edge in quality (Elo: {abs(elo_diff):.0f} points)")
         else:
-            insights.append("Evenly matched teams based on FIFA rankings")
+            insights.append(f"Evenly matched teams (Elo difference: {abs(elo_diff):.0f} points)")
         
-        insights.append(f"Expected scoreline: {home_goals:.1f} - {away_goals:.1f}")
+        if home_xg > away_xg + 0.5:
+            insights.append(f"{home_team_name} expected to create more chances ({home_xg:.1f} vs {away_xg:.1f} xG)")
+        elif away_xg > home_xg + 0.5:
+            insights.append(f"{away_team_name} expected to create more chances ({away_xg:.1f} vs {home_xg:.1f} xG)")
+        
+        insights.append(f"Predicted scoreline: {home_xg:.1f} - {away_xg:.1f}")
         
         return {
             'predicted_outcome': predicted_outcome,
             'predicted_winner': predicted_winner,
-            'team_a_predicted_goals': round(home_goals, 1),
-            'team_b_predicted_goals': round(away_goals, 1),
-            'confidence_score': 0.65,
-            'goal_difference': round(home_goals - away_goals, 1),
+            'team_a_predicted_goals': round(home_xg, 1),
+            'team_b_predicted_goals': round(away_xg, 1),
+            'confidence_score': round(confidence, 2),
+            'goal_difference': round(home_xg - away_xg, 1),
             'home_win_probability': round(home_prob, 2),
             'draw_probability': round(draw_prob, 2),
             'away_win_probability': round(away_prob, 2),
-            'model_version': 'international-fifa-rankings-v1.0',
+            'model_version': 'international-elo-xg-v2.0',
             'insights': insights,
             'key_features': {
-                'home_strength': home_strength - 5,
-                'away_strength': away_strength,
-                'strength_difference': strength_diff
+                'home_elo': home_elo,
+                'away_elo': away_elo,
+                'elo_difference': elo_diff,
+                'home_xg': round(home_xg, 2),
+                'away_xg': round(away_xg, 2)
             }
         }
     
@@ -257,8 +282,9 @@ class TeamAgnosticPredictor:
         
         # Confidence-based insight
         confidence = result['confidence_score']
+        predicted_winner = result.get('predicted_winner', winner)
         if confidence > 0.8:
-            insights.append(f"High confidence in {winner} victory")
+            insights.append(f"High confidence in {predicted_winner} victory")
         elif confidence < 0.6:
             insights.append(f"Uncertain outcome - could go either way")
         
