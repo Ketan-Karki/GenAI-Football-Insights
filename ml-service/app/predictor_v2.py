@@ -196,7 +196,12 @@ class TeamAgnosticPredictor:
         if abs(home_prob - away_prob) < prob_diff_threshold and max_prob in (home_prob, away_prob):
             predicted_outcome = "Draw"
             predicted_winner = "Draw"
-            confidence = 0.5 + min(0.3, (draw_prob - 0.25))
+            # When predicting draw due to equal probabilities, boost draw probability
+            # Redistribute home/away probabilities to draw
+            draw_prob = 1.0 - (home_prob + away_prob) * 0.15  # Keep some uncertainty
+            home_prob = (home_prob + away_prob) * 0.425
+            away_prob = (home_prob + away_prob) * 0.425
+            confidence = min(0.95, 0.6 + draw_prob * 0.3)
         elif max_prob == home_prob:
             predicted_outcome = f"{home_team_name} Win"
             predicted_winner = home_team_name

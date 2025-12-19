@@ -256,7 +256,12 @@ class TeamScorePredictor:
         if abs(team_a_prob - team_b_prob) < prob_diff_threshold and max_prob in (team_a_prob, team_b_prob):
             outcome = "Draw"
             winner = "Draw"
-            confidence = 0.5 + (0.5 - abs(goal_diff))
+            # When predicting draw due to equal probabilities, boost draw probability
+            # Redistribute team_a/team_b probabilities to draw
+            draw_prob = 1.0 - (team_a_prob + team_b_prob) * 0.15  # Keep some uncertainty
+            team_a_prob = (team_a_prob + team_b_prob) * 0.425
+            team_b_prob = (team_a_prob + team_b_prob) * 0.425
+            confidence = min(0.95, 0.6 + draw_prob * 0.3)
         elif max_prob == team_a_prob:
             outcome = f"{team_a_name} Win"
             winner = team_a_name
