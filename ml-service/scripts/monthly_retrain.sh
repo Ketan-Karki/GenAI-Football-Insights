@@ -99,17 +99,27 @@ python3 app/train_team_agnostic.py 2>&1 || echo "⚠️  Model retraining skippe
 # Restart ML service
 echo ""
 echo "Restarting ML service..."
-sudo systemctl restart football-ml || echo "⚠️  Failed to restart ML service"
-
-# Check service status
-sleep 3
-sudo systemctl status football-ml --no-pager | head -n 10 || echo "⚠️  Could not check service status"
+if sudo -n systemctl restart football-ml 2>/dev/null; then
+  echo "✅ ML service restarted"
+  # Check service status
+  sleep 3
+  sudo -n systemctl status football-ml --no-pager | head -n 10 || echo "⚠️  Could not check service status"
+else
+  echo "⚠️  ML service restart requires sudo password (configure passwordless sudo to enable)"
+  echo "   Run: sudo visudo -f /etc/sudoers.d/github-deploy"
+  echo "   Add: ketan ALL=(ALL) NOPASSWD: /bin/systemctl restart football-ml"
+fi
 
 echo ""
 echo "============================================================"
 echo "✅ DAILY RETRAINING COMPLETED - $(date)"
 echo "============================================================"
 
-# Log to file
-mkdir -p /var/log
-echo "$(date): Daily retraining completed" >> /var/log/football-ml-retrain.log
+# Log to file (use home directory if /var/log not writable)
+LOG_FILE="/var/log/football-ml-retrain.log"
+if [ ! -w "$(dirname "$LOG_FILE")" ]; then
+  LOG_FILE="$HOME/.football-ml-retrain.log"
+fi
+mkdir -p "$(dirname "$LOG_FILE")"
+echo "$(date): Daily retraining completed successfully" >> "$LOG_FILE"
+echo "Log saved to: $LOG_FILE"
