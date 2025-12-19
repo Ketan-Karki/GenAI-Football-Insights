@@ -11,26 +11,26 @@ import (
 )
 
 type PredictionHistory struct {
-	ID                   int      `json:"id"`
-	MatchID              int      `json:"matchId"`
-	PredictedAt          string   `json:"predictedAt"`
-	TeamAName            string   `json:"teamAName"`
-	TeamBName            string   `json:"teamBName"`
-	PredictedTeamAGoals  float64  `json:"predictedTeamAGoals"`
-	PredictedTeamBGoals  float64  `json:"predictedTeamBGoals"`
-	PredictedOutcome     string   `json:"predictedOutcome"`
-	PredictedWinner      string   `json:"predictedWinner"`
-	ConfidenceScore      float64  `json:"confidenceScore"`
-	ActualTeamAGoals     *int     `json:"actualTeamAGoals"`
-	ActualTeamBGoals     *int     `json:"actualTeamBGoals"`
-	ActualOutcome        *string  `json:"actualOutcome"`
-	ActualWinner         *string  `json:"actualWinner"`
-	PredictionCorrect    *bool    `json:"predictionCorrect"`
-	Insights             []string `json:"insights"`
-	ModelVersion         string   `json:"modelVersion"`
-	GoalsErrorTeamA      *float64 `json:"goalsErrorTeamA"`
-	GoalsErrorTeamB      *float64 `json:"goalsErrorTeamB"`
-	MatchDate            string   `json:"matchDate"`
+	ID                  int      `json:"id"`
+	MatchID             int      `json:"matchId"`
+	PredictedAt         string   `json:"predictedAt"`
+	TeamAName           string   `json:"teamAName"`
+	TeamBName           string   `json:"teamBName"`
+	PredictedTeamAGoals float64  `json:"predictedTeamAGoals"`
+	PredictedTeamBGoals float64  `json:"predictedTeamBGoals"`
+	PredictedOutcome    string   `json:"predictedOutcome"`
+	PredictedWinner     string   `json:"predictedWinner"`
+	ConfidenceScore     float64  `json:"confidenceScore"`
+	ActualTeamAGoals    *int     `json:"actualTeamAGoals"`
+	ActualTeamBGoals    *int     `json:"actualTeamBGoals"`
+	ActualOutcome       *string  `json:"actualOutcome"`
+	ActualWinner        *string  `json:"actualWinner"`
+	PredictionCorrect   *bool    `json:"predictionCorrect"`
+	Insights            []string `json:"insights"`
+	ModelVersion        string   `json:"modelVersion"`
+	GoalsErrorTeamA     *float64 `json:"goalsErrorTeamA"`
+	GoalsErrorTeamB     *float64 `json:"goalsErrorTeamB"`
+	MatchDate           string   `json:"matchDate"`
 }
 
 // GetPredictionHistory returns prediction history with actual results
@@ -241,12 +241,12 @@ func GetPredictionAccuracy(c *gin.Context, db *sql.DB) {
 	`
 
 	var stats struct {
-		TotalPredictions    int     `json:"totalPredictions"`
-		CorrectPredictions  int     `json:"correctPredictions"`
-		AvgGoalsErrorA      float64 `json:"avgGoalsErrorA"`
-		AvgGoalsErrorB      float64 `json:"avgGoalsErrorB"`
-		AvgConfidence       float64 `json:"avgConfidence"`
-		AccuracyPercentage  float64 `json:"accuracyPercentage"`
+		TotalPredictions   int     `json:"totalPredictions"`
+		CorrectPredictions int     `json:"correctPredictions"`
+		AvgGoalsErrorA     float64 `json:"avgGoalsErrorA"`
+		AvgGoalsErrorB     float64 `json:"avgGoalsErrorB"`
+		AvgConfidence      float64 `json:"avgConfidence"`
+		AccuracyPercentage float64 `json:"accuracyPercentage"`
 	}
 
 	err := db.QueryRow(query).Scan(
@@ -258,6 +258,18 @@ func GetPredictionAccuracy(c *gin.Context, db *sql.DB) {
 	)
 
 	if err != nil {
+		// If no data exists, return zeros instead of error
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusOK, gin.H{
+				"totalPredictions":   0,
+				"correctPredictions": 0,
+				"avgGoalsErrorA":     0.0,
+				"avgGoalsErrorB":     0.0,
+				"avgConfidence":      0.0,
+				"accuracyPercentage": 0.0,
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch accuracy stats"})
 		return
 	}

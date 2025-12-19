@@ -35,24 +35,52 @@ interface MatchContextType {
 const MatchContext = createContext<MatchContextType | undefined>(undefined);
 
 export function MatchProvider({ children }: { children: ReactNode }) {
-  const [matches, setMatchesState] = useState<Record<string, Match[]>>({});
+  const [matches, setMatchesState] = useState<Record<string, Match[]>>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("football_matches_cache");
+      return cached ? JSON.parse(cached) : {};
+    }
+    return {};
+  });
+
   const [predictions, setPredictionsState] = useState<
     Record<number, Prediction>
-  >({});
+  >(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("football_predictions_cache");
+      return cached ? JSON.parse(cached) : {};
+    }
+    return {};
+  });
 
   const setMatches = useCallback((competition: string, matchList: Match[]) => {
-    setMatchesState((prev) => ({
-      ...prev,
-      [competition]: matchList,
-    }));
+    setMatchesState((prev) => {
+      const updated = {
+        ...prev,
+        [competition]: matchList,
+      };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("football_matches_cache", JSON.stringify(updated));
+      }
+      return updated;
+    });
   }, []);
 
   const setPrediction = useCallback(
     (matchId: number, prediction: Prediction) => {
-      setPredictionsState((prev) => ({
-        ...prev,
-        [matchId]: prediction,
-      }));
+      setPredictionsState((prev) => {
+        const updated = {
+          ...prev,
+          [matchId]: prediction,
+        };
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "football_predictions_cache",
+            JSON.stringify(updated)
+          );
+        }
+        return updated;
+      });
     },
     []
   );
@@ -74,6 +102,10 @@ export function MatchProvider({ children }: { children: ReactNode }) {
   const clearCache = useCallback(() => {
     setMatchesState({});
     setPredictionsState({});
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("football_matches_cache");
+      localStorage.removeItem("football_predictions_cache");
+    }
   }, []);
 
   return (
