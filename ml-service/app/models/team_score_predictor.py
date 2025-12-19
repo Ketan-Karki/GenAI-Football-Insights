@@ -284,6 +284,9 @@ class TeamScorePredictor:
             'team_b_predicted_goals': round(float(team_b_goals), 1),
             'confidence_score': round(float(confidence), 2),
             'goal_difference': round(float(goal_diff), 1),
+            'home_win_probability': round(float(team_a_prob), 2),
+            'draw_probability': round(float(draw_prob), 2),
+            'away_win_probability': round(float(team_b_prob), 2),
         }
     
     def _calculate_confidence(self, winning_goals: float, losing_goals: float) -> float:

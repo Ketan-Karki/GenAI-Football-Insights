@@ -80,23 +80,11 @@ class TeamAgnosticPredictor:
                 away_team_name=away_team_name
             )
             
-            # Calculate probabilities from score predictions for backward compatibility
-            goal_diff = result['team_a_predicted_goals'] - result['team_b_predicted_goals']
-            
-            # Convert goal difference to win probabilities
-            if goal_diff > 1.0:
-                home_prob = min(0.85, 0.5 + (goal_diff * 0.15))
-                away_prob = max(0.05, 0.5 - (goal_diff * 0.20))
-                draw_prob = 1.0 - home_prob - away_prob
-            elif goal_diff < -1.0:
-                away_prob = min(0.85, 0.5 + (abs(goal_diff) * 0.15))
-                home_prob = max(0.05, 0.5 - (abs(goal_diff) * 0.20))
-                draw_prob = 1.0 - home_prob - away_prob
-            else:
-                # Close match
-                home_prob = 0.5 + (goal_diff * 0.1)
-                away_prob = 0.5 - (goal_diff * 0.1)
-                draw_prob = max(0.2, 1.0 - home_prob - away_prob)
+            # The model already calculated probabilities correctly in team_score_predictor.py
+            # Extract them from the result instead of recalculating
+            home_prob = result.get('home_win_probability', 0.33)
+            draw_prob = result.get('draw_probability', 0.34)
+            away_prob = result.get('away_win_probability', 0.33)
             
             # Format response
             return {
