@@ -7,20 +7,7 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
-import type { Match } from "@/lib/api";
-
-interface Prediction {
-  matchId: number;
-  homeWinProbability: number;
-  drawProbability: number;
-  awayWinProbability: number;
-  predictedWinner: string;
-  predictedOutcome: string;
-  insights?: string[];
-  confidenceScore?: number;
-  modelVersion?: string;
-  modelAccuracy?: number;
-}
+import type { Match, Prediction } from "@/lib/api";
 
 interface MatchContextType {
   matches: Record<string, Match[]>;

@@ -47,7 +47,8 @@ jobs:
             # Build backend
             echo "📦 Building backend..."
             cd ../backend
-            go build -o football-api cmd/api/main.go
+            export PATH=$PATH:/usr/local/go/bin
+            /usr/local/go/bin/go build -o football-api cmd/api/main.go
             chmod +x football-api
 
             # Update ML service dependencies

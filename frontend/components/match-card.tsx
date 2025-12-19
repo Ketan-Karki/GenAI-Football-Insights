@@ -13,6 +13,8 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match }: MatchCardProps) {
+  const { getPrediction: getCachedPrediction, setPrediction: cachePrediction } =
+    useMatchContext();
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
   const [showBallKnowledge, setShowBallKnowledge] = useState(false);
@@ -22,11 +24,20 @@ export function MatchCard({ match }: MatchCardProps) {
     async function fetchPrediction() {
       if (match.status !== "SCHEDULED" && match.status !== "TIMED") return;
 
+      // Check cache first
+      const cached = getCachedPrediction(match.id);
+      if (cached) {
+        setPrediction(cached);
+        return;
+      }
+
       try {
         setLoadingPrediction(true);
         setPredictionError(null);
         const pred = await api.getPrediction(match.id);
         setPrediction(pred);
+        // Cache the prediction
+        cachePrediction(match.id, pred);
       } catch (err) {
         console.error("Error fetching prediction:", err);
         setPredictionError(
@@ -38,7 +49,7 @@ export function MatchCard({ match }: MatchCardProps) {
     }
 
     fetchPrediction();
-  }, [match.id, match.status]);
+  }, [match.id, match.status, getCachedPrediction, cachePrediction]);
 
   const matchDate = new Date(match.utcDate);
   const isUpcoming = match.status === "SCHEDULED" || match.status === "TIMED";
