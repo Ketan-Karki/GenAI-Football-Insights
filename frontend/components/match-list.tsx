@@ -25,17 +25,17 @@ export function MatchList() {
 
   useEffect(() => {
     async function fetchMatches() {
+      // Check cache first before setting loading
+      const cachedMatches = getMatches(selectedCompetition);
+      if (cachedMatches && cachedMatches.length > 0) {
+        setMatches(cachedMatches);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
-
-        // Check cache first
-        const cachedMatches = getMatches(selectedCompetition);
-        if (cachedMatches && cachedMatches.length > 0) {
-          setMatches(cachedMatches);
-          setLoading(false);
-          return;
-        }
 
         const data = await api.getMatches(selectedCompetition);
 

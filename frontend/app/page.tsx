@@ -17,7 +17,7 @@ export default function Home() {
                   <GlitchText text="Football Match Predictions" />
                 </h1>
                 <p className="text-xs text-[#848E9C] smooth-hover hover:text-[#B7BDC6]">
-                  AI-powered predictions • Premier League
+                  AI-powered predictions • Real-time insights
                 </p>
               </div>
             </div>
