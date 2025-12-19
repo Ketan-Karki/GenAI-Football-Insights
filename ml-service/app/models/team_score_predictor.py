@@ -248,8 +248,16 @@ class TeamScorePredictor:
             draw_prob = max(0.2, 1.0 - team_a_prob - team_b_prob)
         
         # Choose winner based on highest probability
+        # If probabilities are within 2% of each other, predict Draw
         max_prob = max(team_a_prob, team_b_prob, draw_prob)
-        if max_prob == team_a_prob:
+        prob_diff_threshold = 0.02
+        
+        # Check if team_a and team_b are too close (within threshold)
+        if abs(team_a_prob - team_b_prob) < prob_diff_threshold and max_prob in (team_a_prob, team_b_prob):
+            outcome = "Draw"
+            winner = "Draw"
+            confidence = 0.5 + (0.5 - abs(goal_diff))
+        elif max_prob == team_a_prob:
             outcome = f"{team_a_name} Win"
             winner = team_a_name
             confidence = self._calculate_confidence(team_a_goals, team_b_goals)

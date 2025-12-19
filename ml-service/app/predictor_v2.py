@@ -188,8 +188,16 @@ class TeamAgnosticPredictor:
         draw_prob = base_draw_prob / total
         
         # Choose winner based on highest probability
+        # If probabilities are within 2% of each other, predict Draw
         max_prob = max(home_prob, away_prob, draw_prob)
-        if max_prob == home_prob:
+        prob_diff_threshold = 0.02
+        
+        # Check if home and away are too close (within threshold)
+        if abs(home_prob - away_prob) < prob_diff_threshold and max_prob in (home_prob, away_prob):
+            predicted_outcome = "Draw"
+            predicted_winner = "Draw"
+            confidence = 0.5 + min(0.3, (draw_prob - 0.25))
+        elif max_prob == home_prob:
             predicted_outcome = f"{home_team_name} Win"
             predicted_winner = home_team_name
             confidence = 0.5 + min(0.4, (home_prob - 0.5))
